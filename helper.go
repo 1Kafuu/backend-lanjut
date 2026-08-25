@@ -41,6 +41,13 @@ func fail(c *fiber.Ctx, status int, message string) error {
 	})
 }
 
+// 409 - conflict
+func failConflict(c *fiber.Ctx, message string, err any) error {
+	return c.Status(fiber.StatusConflict).JSON(WebResponse{
+		Success: false, Message: message, Errors: err,
+	})
+}
+
 func failValidation(c *fiber.Ctx, errs map[string]string) error {
 	return c.Status(fiber.StatusUnprocessableEntity).JSON(WebResponse{
 		Success: false, Message: "validasi gagal", Errors: errs,
@@ -48,7 +55,7 @@ func failValidation(c *fiber.Ctx, errs map[string]string) error {
 }
 
 var allowedSort = map[string]bool{
-	"id": true, "nim": true, "name": true, "grade": false,
+	"id": true, "nim": true, "name": true, "grade": true,
 }
 
 func parseListQuery(c *fiber.Ctx) ListQuery {
