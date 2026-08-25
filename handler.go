@@ -63,7 +63,7 @@ func listStudents(c *fiber.Ctx) error {
 			lebihKecil = hasil[i].ID < hasil[j].ID
 		}
 		if q.Order == "desc" {
-			return lebihKecil
+			return !lebihKecil
 		}
 		return lebihKecil
 	})
