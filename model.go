@@ -19,8 +19,8 @@ type CreateStudentRequest struct {
 type ReplaceStudentRequest struct {
 	Name     string  `json:"name"`
 	NIM      int     `json:"nim"`
-	Grade    float64 `json:"grade"`
-	IsActive bool    `json:"is_active"`
+	Grade    *float64 `json:"grade"`
+	IsActive *bool    `json:"is_active"`
 }
 
 // PATCH - UpdatePartialField

@@ -172,8 +172,13 @@ func replaceStudent(c *fiber.Ctx) error {
 	if req.NIM == 0 {
 		errs["nim"] = "NIM wajib diisi pada PUT"
 	}
-	if req.Grade < 0 || req.Grade > 4 {
+	if req.Grade == nil {
+		errs["grade"] = "wajib diisi pada PUT"
+	} else if *req.Grade < 0 || *req.Grade > 4 {
 		errs["grade"] = "grade harus antara 0.0 - 4.0"
+	}
+	if req.IsActive == nil {
+		errs["is_active"] = "wajib diisi pada PUT"
 	}
 	if len(errs) > 0 {
 		return failValidation(c, errs)
@@ -188,8 +193,8 @@ func replaceStudent(c *fiber.Ctx) error {
 
 	students[i].Name = req.Name
 	students[i].NIM = req.NIM
-	students[i].Grade = req.Grade
-	students[i].IsActive = req.IsActive
+	students[i].Grade = *req.Grade
+	students[i].IsActive = *req.IsActive
 
 	return ok(c, "mahasiswa berhasil diganti seluruhnya", students[i])
 }
