@@ -36,14 +36,18 @@ func paramID(c *fiber.Ctx) (int, bool) {
 
 func listStudents(c *fiber.Ctx) error {
 	q := parseListQuery(c)
-
-	// Saring
 	hasil := []Student{}
 	for _, u := range students {
 		if q.IsActive != nil && u.IsActive != *q.IsActive {
 			continue
 		}
 		if q.Search != "" && !cocokPencarian(u, q.Search) {
+			continue
+		}
+		if q.MinGrade != nil && u.Grade < *q.MinGrade {
+			continue
+		}
+		if q.MaxGrade != nil && u.Grade > *q.MaxGrade {
 			continue
 		}
 		hasil = append(hasil, u)

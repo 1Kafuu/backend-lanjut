@@ -87,6 +87,16 @@ func parseListQuery(c *fiber.Ctx) ListQuery {
 			q.IsActive = &v
 		}
 	}
+	if raw := c.Query("min_grade"); raw != "" {
+		if v, err := strconv.ParseFloat(raw, 64); err == nil {
+			q.MinGrade = &v
+		}
+	}
+	if raw := c.Query("max_grade"); raw != "" {
+		if v, err := strconv.ParseFloat(raw, 64); err == nil {
+			q.MaxGrade = &v
+		}
+	}
 
 	return q
 }

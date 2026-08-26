@@ -3,7 +3,7 @@ package main
 type Student struct {
 	ID       int     `json:"id"`
 	NIM      int     `json:"nim"`
-	Name     string  `json:"username"`
+	Name     string  `json:"name"`
 	Grade    float64 `json:"grade"`
 	IsActive bool    `json:"is_active"`
 }
@@ -53,4 +53,6 @@ type ListQuery struct {
 	Sort     string
 	Order    string
 	IsActive *bool
+	MinGrade *float64
+	MaxGrade *float64
 }
