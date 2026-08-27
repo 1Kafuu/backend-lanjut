@@ -1,4 +1,4 @@
-package main
+package model
 
 type Student struct {
 	ID       int     `json:"id"`
@@ -17,8 +17,8 @@ type CreateStudentRequest struct {
 
 // PUT- UpdateAllField
 type ReplaceStudentRequest struct {
-	Name     string  `json:"name"`
-	NIM      int     `json:"nim"`
+	Name     string   `json:"name"`
+	NIM      int      `json:"nim"`
 	Grade    *float64 `json:"grade"`
 	IsActive *bool    `json:"is_active"`
 }
@@ -28,7 +28,7 @@ type PatchStudentRequest struct {
 	Name     *string  `json:"name,omitempty"`
 	NIM      *int     `json:"nim,omitempty"`
 	Grade    *float64 `json:"grade,omitempty"`
-	IsActive *bool  `json:"is_active,omitempty"`
+	IsActive *bool    `json:"is_active,omitempty"`
 }
 
 type WebResponse struct {

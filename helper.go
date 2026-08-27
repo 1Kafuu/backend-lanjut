@@ -3,20 +3,20 @@ package main
 import (
 	"strconv"
 	"strings"
-
+	"api-students/app/model"
 	"github.com/gofiber/fiber/v2"
 )
 
 // 200 - ok
 func ok(c *fiber.Ctx, message string, data any) error {
-	return c.Status(fiber.StatusOK).JSON(WebResponse{
+	return c.Status(fiber.StatusOK).JSON(model.WebResponse{
 		Success: true, Message: message, Data: data,
 	})
 }
 
 // 200 - ok
-func okList(c *fiber.Ctx, message string, data any, meta *Meta) error {
-	return c.Status(fiber.StatusOK).JSON(WebResponse{
+func okList(c *fiber.Ctx, message string, data any, meta *model.Meta) error {
+	return c.Status(fiber.StatusOK).JSON(model.WebResponse{
 		Success: true, Message: message, Data: data, Meta: meta,
 	})
 }
@@ -24,7 +24,7 @@ func okList(c *fiber.Ctx, message string, data any, meta *Meta) error {
 // 201 - created
 func created(c *fiber.Ctx, message string, data any, location string) error {
 	c.Set("Location", location)
-	return c.Status(fiber.StatusCreated).JSON(WebResponse{
+	return c.Status(fiber.StatusCreated).JSON(model.WebResponse{
 	Success: true, Message: message, Data: data,
 	})
 }
@@ -36,20 +36,20 @@ func noContent(c *fiber.Ctx) error {
 
 // 4xx - fail
 func fail(c *fiber.Ctx, status int, message string) error {
-	return c.Status(status).JSON(WebResponse{
+	return c.Status(status).JSON(model.WebResponse{
 		Success: false, Message: message,
 	})
 }
 
 // 409 - conflict
 func failConflict(c *fiber.Ctx, message string, err any) error {
-	return c.Status(fiber.StatusConflict).JSON(WebResponse{
+	return c.Status(fiber.StatusConflict).JSON(model.WebResponse{
 		Success: false, Message: message, Errors: err,
 	})
 }
 
 func failValidation(c *fiber.Ctx, errs map[string]string) error {
-	return c.Status(fiber.StatusUnprocessableEntity).JSON(WebResponse{
+	return c.Status(fiber.StatusUnprocessableEntity).JSON(model.WebResponse{
 		Success: false, Message: "validasi gagal", Errors: errs,
 	})
 }
@@ -58,8 +58,8 @@ var allowedSort = map[string]bool{
 	"id": true, "nim": true, "name": true, "grade": true,
 }
 
-func parseListQuery(c *fiber.Ctx) ListQuery {
-	q := ListQuery{
+func parseListQuery(c *fiber.Ctx) model.ListQuery {
+	q := model.ListQuery{
 		Page: c.QueryInt("page", 1),
 		Limit: c.QueryInt("limit", 10),
 		Search: strings.TrimSpace(c.Query("search")),
