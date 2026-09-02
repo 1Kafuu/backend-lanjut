@@ -49,7 +49,7 @@ func main() {
 	studentHandler := NewStudentHandler(studentRepo)
 
 	app := fiber.New(fiber.Config{
-		AppName: "API Students - Praktikum Backend Lanjut Minggu2",
+		AppName: "API Students - Praktikum Backend Lanjut Minggu3",
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			status := fiber.StatusInternalServerError
 			pesan := "terjadi kesalahan server"
@@ -82,7 +82,14 @@ func main() {
 	api := app.Group("/api/v1")
 
 	api.Get("/health", func(c *fiber.Ctx) error {
-		return ok(c, "server sudah berjalan", fiber.Map{"timestamp": time.Now()})
+		ctx, cancel := context.WithTimeout(c.UserContext(), 2*time.Second)
+		defer cancel()
+		// Kesehatan layanan kini ikut bergantung pada basis data.
+		if err := pool.Ping(ctx); err != nil {
+			return fail(c, fiber.StatusServiceUnavailable,
+				"database tidak dapat dihubungi")
+		}
+		return ok(c, "server dan database berjalan", nil)
 	})
 
 	// requireJSON

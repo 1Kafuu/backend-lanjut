@@ -1,31 +1,10 @@
-# API Students — Praktikum Backend Lanjut Minggu 2
+# API Students — Praktikum Backend Lanjut Minggu 3
 
-REST API sederhana untuk manajemen data mahasiswa (CRUD + pencarian, filter, sort & pagination) dibangun dengan **Go** + **Fiber v2**. Penyimpanan menggunakan slice in-memory (tanpa database).
+REST API manajemen data mahasiswa dengan **Go + Fiber v2 + PostgreSQL + Repository Pattern**. Pada Minggu 3 ini seluruh logika *filtering, searching, sorting, pagination,* dan *total count* dipindahkan ke **SQL** (parameterized query, bukan lagi di Go).
 
-- **Base URL:** `http://localhost:3000`
-- **Prefix API:** `/api/v1`
-- **Content-Type:** `application/json` (wajib untuk `POST`, `PUT`, `PATCH`)
-- **Format Respons Umum:**
-
-```json
-{
-  "success": true,
-  "message": "pesan deskriptif",
-  "data": {},
-  "meta": { "page": 1, "limit": 10, "total": 25, "total_pages": 3 },
-  "error": { "field": "pesan error" }
-}
-```
+Base URL: `http://localhost:3000` — Prefix: `/api/v1`
 
 ---
-
-## Cara Menjalankan
-
-```bash
-go mod tidy
-go run .
-# Server berjalan pada http://localhost:3000
-```
 
 ## Tech Stack
 
@@ -33,137 +12,198 @@ go run .
 |---|---|
 | Bahasa | Go 1.26.5 |
 | Framework | Fiber v2 |
-| Middleware | `requestid`, `logger`, `cors` |
-
-## Struktur Proyek
-
-```
-api-students/
-├── main.go      # Setup Fiber, middleware, routing, error handler
-├── handler.go   # Handler CRUD students + logic pencarian/sort/pagination
-├── model.go     # Struct Student, Request DTO, WebResponse, Meta, ListQuery
-├── helper.go    # Helper respons (ok, created, fail, ...) & parseListQuery
-├── go.mod
-└── README.md
-```
+| Database | PostgreSQL 18 + `pgxpool` |
+| Env | `godotenv` |
 
 ---
 
-## Kontrak API
+## Skema Tabel `students`
 
-### Ringkasan Endpoint
+Didefinisikan di `migrations/001_create_students.sql`:
 
-| # | Metode | Endpoint | Deskripsi |
-|---|---|---|---|
-| 1 | GET | `/` | Cek root server |
-| 2 | GET | `/api/v1/health` | Health check + timestamp |
-| 3 | GET | `/api/v1/students/` | Daftar mahasiswa (filter, search, sort, pagination) |
-| 4 | GET | `/api/v1/students/:id` | Detail mahasiswa by ID |
-| 5 | POST | `/api/v1/students/` | Buat mahasiswa baru |
-| 6 | PUT | `/api/v1/students/:id` | Ganti seluruh data mahasiswa |
-| 7 | PATCH | `/api/v1/students/:id` | Ubah sebagian data mahasiswa |
-| 8 | DELETE | `/api/v1/students/:id` | Hapus mahasiswa |
-
-### Tabel Kontrak Lengkap
-
-| Metode | Endpoint | Parameter | Contoh Body Permintaan | Status yang Mungkin Dikembalikan | Contoh Respons |
-|---|---|---|---|---|---|
-| **GET** | `/` | *Tidak ada* | *Tidak ada body* | `200 OK` | `Hello, World!` (text/plain) |
-| **GET** | `/api/v1/health` | *Tidak ada* | *Tidak ada body* | `200 OK` | `{"success": true, "message": "server sudah berjalan", "data": {"timestamp": "2026-05-13T07:00:00Z"}}` |
-| **GET** | `/api/v1/students/` | Query Params (opsional): `page` int default `1`, `limit` int default `10` (1–100, alasan: cegah payload raksasa/DoS & jaga latensi), `search` string cari substring pada `name` (case-insensitive), `sort` = `id`/`nim`/`name`/`grade` default `id` (whitelist), `order` = `asc`/`desc` default `asc`, `is_active` bool `true`/`false`, `min_grade` & `max_grade` float untuk rentang grade | *Tidak ada body* | `200 OK` | `{"success": true, "message": "daftar mahasiswa berhasil diambil", "data": [{"id": 1, "nim": 21001, "name": "Budi", "grade": 3.5, "is_active": true}], "meta": {"page": 1, "limit": 10, "total": 1, "total_pages": 1}}` |
-| **GET** | `/api/v1/students/:id` | Path Param: `id` int harus angka positif (>0) | *Tidak ada body* | `200 OK` ditemukan, `400 Bad Request` id bukan angka/≤0, `404 Not Found` ID tidak ada | 200: `{"success": true, "message": "mahasiswa ditemukan", "data": {"id": 1, "nim": 21001, "name": "Budi", "grade": 3.75, "is_active": true}}` — 400: `{"success": false, "message": "id harus berupa angka positif"}` — 404: `{"success": false, "message": "mahasiswa tidak ditemukan"}` |
-| **POST** | `/api/v1/students/` | Header wajib: `Content-Type: application/json` — Body JSON wajib: `nim` int !=0, `name` string wajib/tidak kosong, `grade` float 0.0–4.0 | `{"nim": 21001, "name": "Budi Santoso", "grade": 3.75}` | `201 Created` berhasil + header `Location`, `400 Bad Request` body bukan JSON valid, `409 Conflict` NIM duplikat, `415 Unsupported Media Type` Content-Type salah, `422 Unprocessable Entity` validasi gagal | 201: `{"success": true, "message": "mahasiswa berhasil dibuat", "data": {"id": 1, "nim": 21001, "name": "Budi Santoso", "grade": 3.75, "is_active": true}}` — 409: `{"success": false, "message": "NIM sudah terdaftar", "error": {"nim": "NIM sudah digunakan untuk mahasiswa lain"}}` — 422: `{"success": false, "message": "validasi gagal", "error": {"name": "wajib diisi", "nim": "NIM wajib diisi", "grade": "grade harus antara 0.0 - 4.0"}}` — 415: `{"success": false, "message": "Content-Type harus application/json"}` |
-| **PUT** | `/api/v1/students/:id` | Path Param: `id` int positif — Header: `Content-Type: application/json` — Body JSON semua field wajib: `name` string, `nim` int !=0, `grade` float 0.0–4.0, `is_active` bool | `{"name": "Budi Update", "nim": 21001, "grade": 3.9, "is_active": false}` | `200 OK` berhasil diganti, `400 Bad Request` ID tidak valid/body bukan JSON, `404 Not Found` ID tidak ada, `409 Conflict` NIM duplikat milik mahasiswa lain, `415 Unsupported Media Type`, `422 Unprocessable Entity` validasi gagal | 200: `{"success": true, "message": "mahasiswa berhasil diganti seluruhnya", "data": {"id": 1, "nim": 21001, "name": "Budi Update", "grade": 3.9, "is_active": false}}` — 409: `{"success": false, "message": "NIM sudah terdaftar", "error": {"nim": "NIM sudah digunakan untuk mahasiswa lain"}}` — 422: `{"success": false, "message": "validasi gagal", "error": {"name": "wajib diisi pada PUT"}}` |
-| **PATCH** | `/api/v1/students/:id` | Path Param: `id` int positif — Header: `Content-Type: application/json` — Body JSON parsial: `name` string opsional, `nim` int opsional, `grade` float 0.0–4.0 opsional, `is_active` bool opsional | `{"grade": 3.85, "is_active": false}` atau `{"name": "Budi Patch"}` | `200 OK` berhasil diperbarui, `400 Bad Request`, `404 Not Found`, `409 Conflict` NIM duplikat milik mahasiswa lain, `415 Unsupported Media Type`, `422 Unprocessable Entity` field tidak valid | 200: `{"success": true, "message": "mahasiswa berhasil diperbarui", "data": {"id": 1, "nim": 21001, "name": "Budi Patch", "grade": 3.85, "is_active": false}}` — 409: `{"success": false, "message": "NIM sudah terdaftar", "error": {"nim": "NIM sudah digunakan untuk mahasiswa lain"}}` — 422: `{"success": false, "message": "validasi gagal", "error": {"name": "nama tidak boleh kosong"}}` |
-| **DELETE** | `/api/v1/students/:id` | Path Param: `id` int positif | *Tidak ada body* | `204 No Content` berhasil dihapus (tanpa body), `400 Bad Request` ID tidak valid, `404 Not Found` ID tidak ada | 204: *(body kosong)* — 404: `{"success": false, "message": "mahasiswa tidak ditemukan"}` |
-| **ANY** | `/*` (endpoint tidak terdaftar) | *Tidak ada* | *Tidak ada* | `404 Not Found` | `{"success": false, "message": "endpoint tidak ditemukan"}` |
-| **ANY** | Error internal (panic / ErrorHandler) | *Tidak ada* | *Tidak ada* | `500 Internal Server Error` | `{"success": false, "message": "terjadi kesalahan server"}` |
-
-> **Catatan penting:**
-> - Field `Name` pada struct Go memiliki tag JSON `name`, konsisten antara request dan response.
-> - `sort` yang diizinkan di `helper.go` adalah `id`, `nim`, `name`, `grade`; nilai lain akan fallback ke `id`.
-> - Semua endpoint `POST`/`PUT`/`PATCH` melewati middleware `requireJSON` → mengembalikan `415` jika `Content-Type` bukan `application/json`.
-> - `409 Conflict` dikembalikan oleh `POST`/`PUT`/`PATCH /api/v1/students` jika `nim` duplikat (sudah digunakan mahasiswa lain) — helper `failConflict` di `helper.go` dengan body `{"success": false, "message": "NIM sudah terdaftar", "error": {"nim": "NIM sudah digunakan untuk mahasiswa lain"}}`.
-
-### Detail Contoh Respons (Pretty JSON)
-
-**GET /api/v1/students?search=budi&is_active=true&page=1&limit=10**
-```json
-{
-  "success": true,
-  "message": "daftar mahasiswa berhasil diambil",
-  "data": [
-    { "id": 1, "nim": 21001, "name": "Budi", "grade": 3.5, "is_active": true }
-  ],
-  "meta": { "page": 1, "limit": 10, "total": 1, "total_pages": 1 }
-}
+```sql
+CREATE TABLE IF NOT EXISTS students (
+    id         SERIAL PRIMARY KEY,
+    nim        VARCHAR(20) NOT NULL UNIQUE,
+    name       VARCHAR(100) NOT NULL,
+    grade      DOUBLE PRECISION NOT NULL CHECK (grade >= 0 AND grade <= 4),
+    is_active  BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_student_name ON students(name);
 ```
 
-**POST /api/v1/students/ — 422 Validation Error**
-```json
-{
-  "success": false,
-  "message": "validasi gagal",
-  "error": {
-    "name": "wajib diisi",
-    "nim": "NIM wajib diisi",
-    "grade": "grade harus antara 0.0 - 4.0"
-  }
-}
-```
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | `SERIAL` | Primary key, auto-increment |
+| `nim` | `VARCHAR(20) UNIQUE` | Nomor induk, **UNIQUE** dijaga oleh DB agar tidak duplikat (mencegah race condition yang tidak bisa dicegah hanya dengan validasi Go). Error duplikat `23505` → `409 Conflict` |
+| `name` | `VARCHAR(100)` | Nama — pencarian via `ILIKE '%keyword%'` |
+| `grade` | `DOUBLE PRECISION` | IPK 0.0–4.0, dibatasi `CHECK` di DB |
+| `is_active` | `BOOLEAN` | Status aktif |
+| `created_at` | `TIMESTAMPTZ` | Diisi otomatis `NOW()` |
 
-**POST / PUT / PATCH /api/v1/students — 409 Conflict (NIM duplikat)**
-```json
-{
-  "success": false,
-  "message": "NIM sudah terdaftar",
-  "error": {
-    "nim": "NIM sudah digunakan untuk mahasiswa lain"
-  }
-}
-```
+**Indeks:** `idx_student_name ON students(name)` mempercepat `WHERE name ILIKE` dan `ORDER BY name`. Indeks `students_nim_key` (dari `UNIQUE nim`) mempercepat pengecekan duplikat.
 
 ---
 
-## Model Data
+## Struktur Project
 
-### Student
+```
+.
+├── migrations/001_create_students.sql   # skema + indeks
+├── database/postgres.go                 # connection pool + Ping
+├── config/env.go                       # loader .env
+├── app/model/student.go                 # Student, DTO, ListQuery, Meta
+├── app/repository/student_repository.go # interface + implementasi Postgres
+├── main.go, handler.go, helper.go
+├── .env.example                         # template env (nilai kosong)
+├── .env                                 # kredensial lokal (di-ignore Git)
+└── go.mod
+```
 
-| Field | Tipe | JSON Key | Keterangan |
-|---|---|---|---|
-| ID | int | `id` | Auto-increment |
-| NIM | int | `nim` | Nomor induk mahasiswa |
-| Name | string | `name` | Nama mahasiswa |
-| Grade | float64 | `grade` | IPK `0.0 – 4.0` |
-| IsActive | bool | `is_active` | Status aktif (default `true` saat create) |
+Repository (`app/repository`) tidak bergantung pada Fiber — hanya `pgxpool` — sehingga mudah diganti framework.
 
-### Contoh cURL
+---
+
+## Environment Variable
+
+Kredensial disimpan di `.env` (tidak di-commit). `.gitignore` sudah berisi `.env`.
+
+**`.env.example`** (yang ada di Git — nilai kosong):
+```
+APP_PORT=
+DB_HOST=
+DB_PORT=
+DB_USER=
+DB_PASSWORD=
+DB_NAME=
+DB_SSLMODE=
+DB_MAX_CONNS=
+```
+
+**`.env`** (buat sendiri dari template, contoh dummy):
+```
+APP_PORT=3000
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=isi_password_postgres_kamu_disini
+DB_NAME=praktikum_backend
+DB_SSLMODE=disable
+DB_MAX_CONNS=10
+```
+
+| Variabel | Contoh | Deskripsi |
+|---|---|---|
+| `APP_PORT` | `3000` | Port Fiber |
+| `DB_HOST` / `DB_PORT` | `localhost` / `5432` | Alamat PostgreSQL |
+| `DB_USER` / `DB_PASSWORD` | `postgres` / `isi_password...` | Kredensial DB — ganti dengan password instalasi lokal |
+| `DB_NAME` | `praktikum_backend` | Nama database |
+| `DB_SSLMODE` | `disable` | `disable` untuk lokal |
+| `DB_MAX_CONNS` | `10` | Maks koneksi pool |
+
+---
+
+## Persiapan Database Dari Nol
+
+1. **Pastikan PostgreSQL berjalan** dan `psql` tersedia (`psql --version`).
+2. **Buat database:**
+   ```bash
+   psql -U postgres -h localhost -c "CREATE DATABASE praktikum_backend;"
+   ```
+3. **Siapkan env:**
+   ```bash
+   cp .env.example .env
+   # lalu isi DB_PASSWORD dll di .env
+   ```
+4. **Jalankan migrasi:**
+   ```bash
+   psql -U postgres -h localhost -d praktikum_backend -f migrations/001_create_students.sql
+   ```
+
+5. **Verifikasi tabel:**
+   ```bash
+   psql -U postgres -h localhost -d praktikum_backend -c "\d students"
+   # harus: id integer, nim varchar(20) UNIQUE, name varchar(100), grade double precision CHECK 0-4, is_active boolean, created_at timestamptz, idx_student_name
+   ```
+
+---
+
+## Menjalankan Aplikasi
 
 ```bash
-# Health
+go mod tidy
+go run .
+```
+
+Server berjalan di `http://localhost:3000`. `database/postgres.go` membangun `pgxpool` (`MaxConns 10`, `MinConns 2`, `MaxConnLifetime 1h`) dan melakukan `Ping` saat startup — jika gagal, aplikasi tidak akan start.
+
+Cek kesehatan (sekaligus cek koneksi DB):
+```bash
+curl http://localhost:3000/api/v1/health
+# DB hidup: {"success":true,"message":"server dan database berjalan"}
+# DB mati : {"success":false,"message":"database tidak dapat dihubungi"} 503
+
+curl http://localhost:3000/
+# sama — keduanya Ping DB, sesuai checklist
+```
+
+Matikan DB untuk membuktikan `503` (butuh screenshot laporan): stop service PostgreSQL → `curl /health` harus `503`, start lagi → `200`.
+
+---
+
+## API Endpoints
+
+| Metode | Endpoint | Keterangan |
+|---|---|---|
+| GET | `/` | Root + cek DB |
+| GET | `/api/v1/health` | Health + cek DB |
+| GET | `/api/v1/students/?page=&limit=&search=&sort=&order=&is_active=&min_grade=&max_grade=` | List (semua query di SQL) |
+| GET | `/api/v1/students/:id` | Detail |
+| POST | `/api/v1/students/` | Buat |
+| PUT | `/api/v1/students/:id` | Ganti semua field |
+| PATCH | `/api/v1/students/:id` | Ganti sebagian |
+| DELETE | `/api/v1/students/:id` | Hapus |
+
+**Query `GET /students`:**
+- `search` → `WHERE name ILIKE '%keyword%'` (parameterized, partial match)
+- `is_active`, `min_grade`, `max_grade` → `WHERE is_active = $1 AND grade >= $2`
+- `sort` whitelist `id, nim, name, grade, created_at` + `order asc/desc` → `ORDER BY` (fallback `id` jika tidak di whitelist — anti injection)
+- `page`, `limit` → `LIMIT $1 OFFSET $2` (`offset = (page-1)*limit`)
+- `total` → `SELECT COUNT(*) ... WHERE` sama dengan query data → `meta.total`
+
+**Status:**
+`200 OK`, `201 Created`, `204 No Content`, `400 Bad Request` (ID bukan angka / Content-Type salah), `422` validasi, `404` ID tidak ada, `409` NIM duplikat, `503` DB mati, `500` error lain.
+
+### Contoh `curl`
+
+```bash
 curl http://localhost:3000/api/v1/health
 
-# List dengan filter & pagination
 curl "http://localhost:3000/api/v1/students?search=budi&is_active=true&page=1&limit=5&sort=nim&order=asc"
 
-# Create
 curl -X POST http://localhost:3000/api/v1/students/ \
   -H "Content-Type: application/json" \
-  -d '{"nim":21001,"name":"Budi","grade":3.75}'
+  -d '{"nim":21001,"name":"Budi Santoso","grade":3.75}'
 
-# Get by ID
 curl http://localhost:3000/api/v1/students/1
 
-# PUT (replace)
 curl -X PUT http://localhost:3000/api/v1/students/1 \
   -H "Content-Type: application/json" \
   -d '{"name":"Budi Update","nim":21001,"grade":3.9,"is_active":false}'
 
-# PATCH (partial)
 curl -X PATCH http://localhost:3000/api/v1/students/1 \
   -H "Content-Type: application/json" \
   -d '{"grade":3.85}'
 
-# DELETE
 curl -X DELETE http://localhost:3000/api/v1/students/1
 ```
+
+## Troubleshooting
+
+- `psql: command not found` → tambah `C:\Program Files\PostgreSQL\18\bin` ke PATH.
+- `password authentication failed` → `DB_PASSWORD` di `.env` salah.
+- `relation "students" does not exist` → belum `psql -f migrations/001_create_students.sql`.
+- `bind: address already in use :3000` → `netstat -ano | findstr :3000` → `taskkill /F /PID <PID>`.
+- `git status` muncul `.env` → pastikan `.gitignore` berisi `.env`.
+

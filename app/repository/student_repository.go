@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -29,6 +30,7 @@ var kolomUrut = map[string]string{
 	"id":         "id",
 	"name":       "name",
 	"nim":        "nim",
+	"grade":      "grade",
 	"created_at": "created_at",
 }
 
@@ -41,16 +43,23 @@ func NewStudentRepository(pool *pgxpool.Pool) StudentRepository {
 }
 
 func buildFilter(q model.ListQuery) (string, []any) {
-	where := " WHERE 1 = 1"
+	where := " WHERE 1=1"
 	args := []any{}
 	if q.Search != "" {
-		where += fmt.Sprintf(" AND (username ILIKE $%d OR email ILIKE $%d)",
-			len(args)+1, len(args)+1)
+		where += fmt.Sprintf(" AND name ILIKE $%d", len(args)+1)
 		args = append(args, "%"+q.Search+"%")
 	}
 	if q.IsActive != nil {
 		where += fmt.Sprintf(" AND is_active = $%d", len(args)+1)
 		args = append(args, *q.IsActive)
+	}
+	if q.MinGrade != nil {
+		where += fmt.Sprintf(" AND grade >= $%d", len(args)+1)
+		args = append(args, *q.MinGrade)
+	}
+	if q.MaxGrade != nil {
+		where += fmt.Sprintf(" AND grade <= $%d", len(args)+1)
+		args = append(args, *q.MaxGrade)
 	}
 	return where, args
 }
@@ -91,8 +100,12 @@ func (r *studentPostgresRepository) FindAll(
 	hasil := []model.Student{}
 	for rows.Next() {
 		var u model.Student
-		if err := rows.Scan(&u.ID, &u.Name, &u.NIM, &u.Grade, &u.IsActive); err != nil {
+		var nimStr string
+		if err := rows.Scan(&u.ID, &u.Name, &nimStr, &u.Grade, &u.IsActive, &u.CreatedAt); err != nil {
 			return nil, 0, fmt.Errorf("Membaca baris mahasiswa: %w", err)
+		}
+		if v, err := strconv.Atoi(nimStr); err == nil {
+			u.NIM = v
 		}
 		hasil = append(hasil, u)
 	}
@@ -107,10 +120,16 @@ func (r *studentPostgresRepository) FindByID(
 	ctx context.Context, id int,
 ) (model.Student, error) {
 	var u model.Student
+	var nimStr string
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, name, nim, grade, is_active, created_at
-		FROM users WHERE id = $1`, id,
-	).Scan(&u.ID, &u.Name, &u.NIM, &u.Grade, &u.IsActive, &u.CreatedAt)
+		FROM students WHERE id = $1`, id,
+	).Scan(&u.ID, &u.Name, &nimStr, &u.Grade, &u.IsActive, &u.CreatedAt)
+	if err == nil {
+		if v, convErr := strconv.Atoi(nimStr); convErr == nil {
+			u.NIM = v
+		}
+	}
 	if err != nil {
 		// pgx.ErrNoRows diterjemahkan menjadi error milik kita sendiri.
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -127,9 +146,9 @@ func (r *studentPostgresRepository) Create(
 ) (model.Student, error) {
 	err := r.pool.QueryRow(ctx,
 		`INSERT INTO students (name, nim, grade, is_active)
-		VALUE ($1, $2, $3, $4)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at`,
-		u.Name, u.NIM, u.Grade, u.IsActive,
+		u.Name, strconv.Itoa(u.NIM), u.Grade, u.IsActive,
 	).Scan(&u.ID, &u.CreatedAt)
 
 	if err != nil {
@@ -146,18 +165,26 @@ func (r *studentPostgresRepository) Create(
 func (r *studentPostgresRepository) Update(
 	ctx context.Context, u model.Student,
 ) (model.Student, error) {
+	var nimStr string
 	err := r.pool.QueryRow(ctx,
 		`UPDATE students SET name = $1, nim = $2, grade = $3, is_active = $4
 		WHERE id = $5
 		RETURNING id, name, nim, grade, is_active, created_at`,
-		u.Name, u.NIM, u.Grade, u.IsActive, u.ID,
-	).Scan(&u.ID, &u.Name, &u.NIM, &u.Grade, &u.IsActive, &u.CreatedAt)
+		u.Name, strconv.Itoa(u.NIM), u.Grade, u.IsActive, u.ID,
+	).Scan(&u.ID, &u.Name, &nimStr, &u.Grade, &u.IsActive, &u.CreatedAt)
+	if err == nil {
+		if v, convErr := strconv.Atoi(nimStr); convErr == nil {
+			u.NIM = v
+		}
+	}
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Student{}, ErrNotFound
+		}
 		if isUniqueViolation(err) {
 			return model.Student{}, ErrDuplicate
 		}
-
 		return model.Student{}, fmt.Errorf("Memperbarui user: %w", err)
 	}
 

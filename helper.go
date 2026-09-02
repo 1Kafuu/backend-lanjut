@@ -57,7 +57,7 @@ func failValidation(c *fiber.Ctx, errs map[string]string) error {
 }
 
 var allowedSort = map[string]bool{
-	"id": true, "nim": true, "name": true, "grade": true,
+	"id": true, "nim": true, "name": true, "grade": true, "created_at": true,
 }
 
 func parseListQuery(c *fiber.Ctx) model.ListQuery {
