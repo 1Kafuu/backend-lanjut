@@ -66,3 +66,26 @@ func ParseListQuery(c *fiber.Ctx) model.ListQuery {
 	}
 	return q
 }
+
+func PrestasiParseListQuery(c *fiber.Ctx) model.PrestasiListQuery {
+	q := model.PrestasiListQuery{
+		Page:   c.QueryInt("page", 1),
+		Limit:  c.QueryInt("limit", 10),
+		Search: strings.TrimSpace(c.Query("search")),
+		Order:  strings.ToLower(c.Query("order", "asc")),
+	}
+	if q.Page < 1 {
+		q.Page = 1
+	}
+	if q.Limit < 1 {
+		q.Limit = 10
+	}
+	if q.Limit > 100 {
+		q.Limit = 100
+	}
+
+	if q.Order != "desc" {
+		q.Order = "asc"
+	}
+	return q
+}

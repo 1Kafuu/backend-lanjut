@@ -11,13 +11,13 @@ import (
 	"api-students/routes"
 )
 
-func NewApp(logger *slog.Logger, pool *pgxpool.Pool, studentService *service.StudentService) *fiber.App {
+func NewApp(logger *slog.Logger, pool *pgxpool.Pool, studentService *service.StudentService,prestasiService *service.PrestasiService) *fiber.App {
 	app := fiber.New(fiber.Config{
 		AppName:      GetENV("APP_NAME", "Praktikum Backend Lanjut"),
 		ErrorHandler: newErrorHandler(logger),
 	})
 	middleware.Register(app, logger)
-	routes.Register(app, pool, studentService)
+	routes.Register(app, pool, studentService, prestasiService)
 	app.Use(func(c *fiber.Ctx) error {
 		return helper.Fail(c, fiber.StatusNotFound, "endpoint tidak ditemukan")
 	})

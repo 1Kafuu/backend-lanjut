@@ -25,9 +25,11 @@ func main() {
 	defer pool.Close()
 
 	studentRepository := repository.NewStudentRepository(pool)
+	prestasiRepository := repository.NewPrestasiReporsitory(pool)
 	studentService := service.NewStudentService(studentRepository)
+	prestasiService := service.NewPrestasiService(prestasiRepository, studentRepository)
 
-	app := config.NewApp(logger, pool, studentService)
+	app := config.NewApp(logger, pool, studentService, prestasiService)
 	port := config.GetENV("APP_PORT", "3000")
 
 	go func() {
