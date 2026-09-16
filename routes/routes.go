@@ -4,27 +4,47 @@ import (
 	"context"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"api-students/app/service"
 	"api-students/helper"
 	"api-students/middleware"
-
-	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Register(app *fiber.App, pool *pgxpool.Pool, studentService *service.StudentService, prestasiService *service.PrestasiService) {
+type Dependencies struct {
+	Pool          *pgxpool.Pool
+	JWT           *helper.JWTManager
+	StudentService *service.StudentService
+	PrestasiService  *service.PrestasiService
+	AuthService    *service.AuthService
+}
+
+func Register(app *fiber.App, deps Dependencies) {
 	api := app.Group("/api/v1")
-	api.Get("/health", healthCheck(pool))
-	students := api.Group("/students", middleware.RequireJSON)
-	prestasi := api.Group("/prestasi", middleware.RequireJSON)
-	students.Get("/", studentService.List)
-	students.Get("/:id", studentService.Get)
-	students.Post("/", studentService.Create)
-	students.Put("/:id", studentService.Replace)
-	students.Patch("/:id", studentService.Patch)
-	students.Delete("/:id", studentService.Delete)
-	prestasi.Get("/", prestasiService.List)
-	prestasi.Get("/:id", prestasiService.Get)
+
+	// public
+	api.Get("/health", healthCheck(deps.Pool))
+
+	// auth
+	auth := api.Group("/auth", middleware.RequireJSON)
+	auth.Post("/register", deps.AuthService.Register)
+	auth.Post("/login", middleware.LoginRateLimiter(), deps.AuthService.Login)
+	auth.Post("/refresh", deps.AuthService.Refresh)
+	auth.Post("/logout", deps.AuthService.Logout)
+	auth.Get("/me", middleware.RequireAuth(deps.JWT), deps.AuthService.Me)
+
+	// students — all require valid access token
+	students := api.Group("/students", middleware.RequireJSON, middleware.RequireAuth(deps.JWT))
+	students.Get("/", deps.StudentService.List)
+	students.Get("/:id", deps.StudentService.Get)
+	students.Post("/", deps.StudentService.Create)
+	students.Put("/:id", deps.StudentService.Replace)
+	students.Patch("/:id", deps.StudentService.Patch)
+	students.Delete("/:id", deps.StudentService.Delete)
+
+	prestasi := api.Group("/prestasi", middleware.RequireJSON, middleware.RequireAuth(deps.JWT))
+	prestasi.Get("/", deps.PrestasiService.List)
+	prestasi.Get("/:id", deps.PrestasiService.Get)
 }
 
 func healthCheck(pool *pgxpool.Pool) fiber.Handler {
