@@ -53,7 +53,7 @@ func (r *prestasiPostgresRepository) FindAll(
 	sqlText := fmt.Sprintf(
 		`SELECT id, student_id, nama_prestasi, juara, created_at 
 		FROM prestasi%s
-		ORDER BY %s
+		ORDER BY id %s
 		LIMIT $%d OFFSET $%d`,
 		where, mode, len(args)+1, len(args)+2,
 	)
