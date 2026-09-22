@@ -41,3 +41,7 @@ type AuthUser struct {
 	Username string `json:"username"`
 	Role     string `json:"role"`
 }
+
+type AssignRoleRequest struct {
+    Role string `json:"role"`
+}
