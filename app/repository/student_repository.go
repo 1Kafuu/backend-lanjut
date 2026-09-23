@@ -82,7 +82,7 @@ func (r *studentPostgresRepository) FindAll(
 	}
 
 	sqlText := fmt.Sprintf(
-		`SELECT id, name, nim, grade, is_active, created_at 
+		`SELECT id, name, nim, grade, is_active, owner_id, created_at
 		FROM students%s
 		ORDER BY %s %s
 		LIMIT $%d OFFSET $%d`,
@@ -101,7 +101,7 @@ func (r *studentPostgresRepository) FindAll(
 	for rows.Next() {
 		var u model.Student
 		var nimStr string
-		if err := rows.Scan(&u.ID, &u.Name, &nimStr, &u.Grade, &u.IsActive, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Name, &nimStr, &u.Grade, &u.IsActive, &u.OwnerID, &u.CreatedAt); err != nil {
 			return nil, 0, fmt.Errorf("Membaca baris mahasiswa: %w", err)
 		}
 		if v, err := strconv.Atoi(nimStr); err == nil {
@@ -122,9 +122,9 @@ func (r *studentPostgresRepository) FindByID(
 	var u model.Student
 	var nimStr string
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, name, nim, grade, is_active, created_at
+		`SELECT id, name, nim, grade, is_active, owner_id, created_at
 		FROM students WHERE id = $1`, id,
-	).Scan(&u.ID, &u.Name, &nimStr, &u.Grade, &u.IsActive, &u.CreatedAt)
+	).Scan(&u.ID, &u.Name, &nimStr, &u.Grade, &u.IsActive, &u.OwnerID, &u.CreatedAt)
 	if err == nil {
 		if v, convErr := strconv.Atoi(nimStr); convErr == nil {
 			u.NIM = v
@@ -145,10 +145,10 @@ func (r *studentPostgresRepository) Create(
 	ctx context.Context, u model.Student,
 ) (model.Student, error) {
 	err := r.pool.QueryRow(ctx,
-		`INSERT INTO students (name, nim, grade, is_active)
-		VALUES ($1, $2, $3, $4)
+		`INSERT INTO students (name, nim, grade, is_active, owner_id)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at`,
-		u.Name, strconv.Itoa(u.NIM), u.Grade, u.IsActive,
+		u.Name, strconv.Itoa(u.NIM), u.Grade, u.IsActive, u.OwnerID,
 	).Scan(&u.ID, &u.CreatedAt)
 
 	if err != nil {
@@ -169,9 +169,9 @@ func (r *studentPostgresRepository) Update(
 	err := r.pool.QueryRow(ctx,
 		`UPDATE students SET name = $1, nim = $2, grade = $3, is_active = $4
 		WHERE id = $5
-		RETURNING id, name, nim, grade, is_active, created_at`,
+		RETURNING id, name, nim, grade, is_active, owner_id, created_at`,
 		u.Name, strconv.Itoa(u.NIM), u.Grade, u.IsActive, u.ID,
-	).Scan(&u.ID, &u.Name, &nimStr, &u.Grade, &u.IsActive, &u.CreatedAt)
+	).Scan(&u.ID, &u.Name, &nimStr, &u.Grade, &u.IsActive, &u.OwnerID, &u.CreatedAt)
 	if err == nil {
 		if v, convErr := strconv.Atoi(nimStr); convErr == nil {
 			u.NIM = v
