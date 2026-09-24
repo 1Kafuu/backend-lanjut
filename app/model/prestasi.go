@@ -11,10 +11,10 @@ type Prestasi struct {
 }
 
 type PrestasiListQuery struct {
-	Page     int
-	Limit    int
-	Search   string
-	Order    string
+	Page   int
+	Limit  int
+	Search string
+	Order  string
 }
 
 func (q PrestasiListQuery) Offset() int {

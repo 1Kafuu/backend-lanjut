@@ -1,8 +1,9 @@
 package helper
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"api-students/app/model"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 // LocalsAuthUser is the Fiber Locals key where RequireAuth stores identity.

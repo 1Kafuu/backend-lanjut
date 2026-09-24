@@ -47,18 +47,29 @@ func main() {
 	userRepository := repository.NewUserRepository(pool)
 	tokenRepository := repository.NewTokenRepository(pool)
 	studentRepository := repository.NewStudentRepository(pool)
+	roleRepository := repository.NewRoleRepository(pool)
+	rawPermissions, err := roleRepository.LoadPermissions(context.Background())
+	if err != nil {
+		logger.Error("gagal memuat permission", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	perms := helper.NewPermissionSet(rawPermissions)
+	logger.Info("permission dimuat", slog.Any("roles", perms.KnownRoles()))
 
-	studentService := service.NewStudentService(studentRepository)
+	studentService := service.NewStudentService(studentRepository, perms)
+	userService := service.NewUserService(userRepository, perms)
 	prestasiRepository := repository.NewPrestasiReporsitory(pool)
 	prestasiService := service.NewPrestasiService(prestasiRepository, studentRepository)
-	authService := service.NewAuthService(userRepository, tokenRepository, jwtManager, refreshTTL)
+	authService := service.NewAuthService(userRepository, tokenRepository, jwtManager, perms, refreshTTL)
 
 	app := config.NewApp(logger, pool, routes.Dependencies{
-		Pool:           pool,
-		JWT:            jwtManager,
+		Pool:            pool,
+		JWT:             jwtManager,
+		Permissions:     perms,
 		StudentService:  studentService,
 		PrestasiService: prestasiService,
-		AuthService:    authService,
+		UserService:     userService,
+		AuthService:     authService,
 	})
 
 	port := config.GetENV("APP_PORT", "3000")

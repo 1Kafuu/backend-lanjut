@@ -1,10 +1,10 @@
 package service
 
 import (
+	"api-students/app/model"
 	"regexp"
 	"strings"
 	"unicode"
-	"api-students/app/model"
 )
 
 const minPasswordLength = 8

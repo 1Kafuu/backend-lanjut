@@ -11,16 +11,16 @@ import (
 
 func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s", 
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		config.GetENV("DB_USER", "postgres"),
 		config.GetENV("DB_PASSWORD", ""),
 		config.GetENV("DB_HOST", "localhost"),
-		config.GetENV("DB_PORT","5432"),
+		config.GetENV("DB_PORT", "5432"),
 		config.GetENV("DB_NAME", "praktikum-backend"),
 		config.GetENV("DB_SSLMODE", "disable"),
 	)
 	cfg, err := pgxpool.ParseConfig(dsn)
-		if err != nil {
+	if err != nil {
 		return nil, fmt.Errorf("konfigurasi database tidak valid: %w", err)
 	}
 
@@ -30,16 +30,16 @@ func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 	cfg.MaxConnIdleTime = 30 * time.Minute
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
-		if err != nil {
+	if err != nil {
 		return nil, fmt.Errorf("gagal membuat pool: %w", err)
 	}
 	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	if err := pool.Ping(pingCtx); err != nil {
-	pool.Close()
+		pool.Close()
 		return nil, fmt.Errorf("gagal terhubung ke database: %w", err)
 	}
-	
- 	return pool, nil
+
+	return pool, nil
 }

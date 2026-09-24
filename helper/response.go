@@ -1,8 +1,9 @@
 package helper
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"api-students/app/model"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 func Success(c *fiber.Ctx, status int, message string, data any) error {

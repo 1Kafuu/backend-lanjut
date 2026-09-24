@@ -1,8 +1,8 @@
 package service
 
 import (
-	"testing"
 	"api-students/app/model"
+	"testing"
 )
 
 func TestValidateRegister_Valid(t *testing.T) {
@@ -18,8 +18,8 @@ func TestValidateRegister_InvalidUsername(t *testing.T) {
 		wantKey  string
 	}{
 		{"", "username"},
-		{"ab", "username"},           // <3
-		{"sari@hack", "username"},    // illegal char @
+		{"ab", "username"},        // <3
+		{"sari@hack", "username"}, // illegal char @
 	}
 	for _, tc := range cases {
 		errs := ValidateRegister(model.RegisterRequest{Username: tc.username, Email: "a@b.com", Password: "rahasia123"})

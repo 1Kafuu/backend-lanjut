@@ -9,7 +9,7 @@ import (
 )
 
 func LoadENV() {
-	if err:= godotenv.Load(); err != nil {
+	if err := godotenv.Load(); err != nil {
 		log.Println("Peringatan: berkas .env tidak ditemukan, memakai environment sistem")
 	}
 }

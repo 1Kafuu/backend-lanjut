@@ -7,10 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"api-students/app/model"
 	"api-students/app/repository"
 	"api-students/helper"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 const refreshTokenBytes = 32 // 32 bytes → 64 hex chars
@@ -19,6 +20,7 @@ type AuthService struct {
 	users      repository.UserRepository
 	tokens     repository.TokenRepository
 	jwt        *helper.JWTManager
+	perms      *helper.PermissionSet
 	refreshTTL time.Duration
 }
 
@@ -26,9 +28,10 @@ func NewAuthService(
 	users repository.UserRepository,
 	tokens repository.TokenRepository,
 	jwtManager *helper.JWTManager,
+	perms *helper.PermissionSet,
 	refreshTTL time.Duration,
 ) *AuthService {
-	return &AuthService{users: users, tokens: tokens, jwt: jwtManager, refreshTTL: refreshTTL}
+	return &AuthService{users: users, tokens: tokens, jwt: jwtManager, perms: perms, refreshTTL: refreshTTL}
 }
 
 func (s *AuthService) Register(c *fiber.Ctx) error {
@@ -145,7 +148,11 @@ func (s *AuthService) Me(c *fiber.Ctx) error {
 	if err != nil {
 		return helper.Fail(c, fiber.StatusUnauthorized, "user tidak ditemukan")
 	}
-	return helper.Success(c, fiber.StatusOK, "profil berhasil diambil", user)
+	user.Password = ""
+	return helper.Success(c, fiber.StatusOK, "profil berhasil diambil", fiber.Map{
+		"user":        user,
+		"permissions": s.perms.PermissionsOf(authUser.Role),
+	})
 }
 
 func (s *AuthService) issueTokenPair(ctx context.Context, user model.User) (model.TokenPair, error) {

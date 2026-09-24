@@ -13,7 +13,7 @@ import (
 )
 
 type StudentService struct {
-	repo repository.StudentRepository
+	repo  repository.StudentRepository
 	perms *helper.PermissionSet
 }
 
@@ -25,7 +25,7 @@ func (s *StudentService) List(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
 	if _, ok := helper.CurrentUser(c); !ok {
-	    return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
+		return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
 	}
 	q := helper.ParseListQuery(c)
 	students, total, err := s.repo.FindAll(ctx, q)
@@ -41,8 +41,9 @@ func (s *StudentService) Get(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
 	current, ok := helper.CurrentUser(c)
-    if !ok {
-        return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi") }
+	if !ok {
+		return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
+	}
 	id, valid := helper.ParamID(c)
 	if !valid {
 		return helper.Fail(c, fiber.StatusBadRequest, "id harus berupa angka positif")
@@ -52,8 +53,8 @@ func (s *StudentService) Get(c *fiber.Ctx) error {
 		return translateError(c, err, "gagal mengambil data mahasiswa")
 	}
 	if !CanAccessStudent(current, student.OwnerID, s.perms, "student:read:any") {
-        return helper.Fail(c, fiber.StatusForbidden, "tidak berhak mengakses data mahasiswa lain")
-    }
+		return helper.Fail(c, fiber.StatusForbidden, "tidak berhak mengakses data mahasiswa lain")
+	}
 	return helper.Success(c, fiber.StatusOK, "mahasiswa ditemukan", student)
 }
 
@@ -62,7 +63,7 @@ func (s *StudentService) Create(c *fiber.Ctx) error {
 	defer cancel()
 	current, ok := helper.CurrentUser(c)
 	if !ok {
-	    return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
+		return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
 	}
 	var req model.CreateStudentRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -74,7 +75,7 @@ func (s *StudentService) Create(c *fiber.Ctx) error {
 	}
 	ownerID := current.UserID
 	baru, err := s.repo.Create(ctx, model.Student{
-		NIM: req.NIM, Name: req.Name, Grade: req.Grade, IsActive: true,OwnerID: &ownerID,
+		NIM: req.NIM, Name: req.Name, Grade: req.Grade, IsActive: true, OwnerID: &ownerID,
 	})
 	if err != nil {
 		return translateError(c, err, "gagal menyimpan mahasiswa")
@@ -87,7 +88,7 @@ func (s *StudentService) Replace(c *fiber.Ctx) error {
 	defer cancel()
 	current, ok := helper.CurrentUser(c)
 	if !ok {
-	    return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
+		return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
 	}
 	id, valid := helper.ParamID(c)
 	if !valid {
@@ -101,11 +102,11 @@ func (s *StudentService) Replace(c *fiber.Ctx) error {
 		return helper.FailValidation(c, errs)
 	}
 	saatIni, err := s.repo.FindByID(ctx, id)
-	if err!= nil {
-	    return translateError(c, err, "gagal mengambil data mahasiswa")
+	if err != nil {
+		return translateError(c, err, "gagal mengambil data mahasiswa")
 	}
 	if !CanAccessStudent(current, saatIni.OwnerID, s.perms, "student:update:any") {
-	    return helper.Fail(c, fiber.StatusForbidden, "tidak berhak mengubah data mahasiswa lain")
+		return helper.Fail(c, fiber.StatusForbidden, "tidak berhak mengubah data mahasiswa lain")
 	}
 	hasil, err := s.repo.Update(ctx, model.Student{
 		ID: id, Name: strings.TrimSpace(req.Name), NIM: req.NIM, Grade: *req.Grade, IsActive: *req.IsActive,
@@ -121,7 +122,7 @@ func (s *StudentService) Patch(c *fiber.Ctx) error {
 	defer cancel()
 	current, ok := helper.CurrentUser(c)
 	if !ok {
-	    return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
+		return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
 	}
 	id, valid := helper.ParamID(c)
 	if !valid {
@@ -139,7 +140,7 @@ func (s *StudentService) Patch(c *fiber.Ctx) error {
 		return translateError(c, err, "gagal mengambil data mahasiswa")
 	}
 	if !CanAccessStudent(current, saatIni.OwnerID, s.perms, "student:update:any") {
-	    return helper.Fail(c, fiber.StatusForbidden, "tidak berhak mengubah data mahasiswa lain")
+		return helper.Fail(c, fiber.StatusForbidden, "tidak berhak mengubah data mahasiswa lain")
 	}
 	updated, errs := ApplyPatch(saatIni, req)
 	if len(errs) > 0 {
@@ -157,10 +158,10 @@ func (s *StudentService) Delete(c *fiber.Ctx) error {
 	defer cancel()
 	current, ok := helper.CurrentUser(c)
 	if !ok {
-	    return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
+		return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
 	}
 	if !s.perms.Can(current.Role, "student:delete") {
-	    return helper.Fail(c, fiber.StatusForbidden, "role "+current.Role+" tidak memiliki hak")
+		return helper.Fail(c, fiber.StatusForbidden, "role "+current.Role+" tidak memiliki hak")
 	}
 	id, valid := helper.ParamID(c)
 	if !valid {

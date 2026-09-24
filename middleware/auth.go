@@ -5,9 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"api-students/helper"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
-	"api-students/helper"
 )
 
 // RequireAuth validates Bearer access token and stores AuthUser in Locals.

@@ -51,7 +51,7 @@ func (r *prestasiPostgresRepository) FindAll(
 	}
 
 	sqlText := fmt.Sprintf(
-		`SELECT id, student_id, nama_prestasi, juara, created_at 
+		`SELECT id, student_id, nama_prestasi, juara, created_at
 		FROM prestasi%s
 		ORDER BY id %s
 		LIMIT $%d OFFSET $%d`,
@@ -84,7 +84,7 @@ func (r *prestasiPostgresRepository) FindAll(
 func (r *prestasiPostgresRepository) FindByID(ctx context.Context, id int) (model.Prestasi, error) {
 	var p model.Prestasi
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, student_id, nama_prestasi, juara, created_at 
+		`SELECT id, student_id, nama_prestasi, juara, created_at
 		FROM prestasi WHERE id = $1`, id,
 	).Scan(&p.ID, &p.StudentID, &p.NamaPrestasi, &p.Juara, &p.CreatedAt)
 	if err != nil {

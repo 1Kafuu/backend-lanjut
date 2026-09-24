@@ -3,11 +3,12 @@ package config
 import (
 	"log/slog"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"api-students/helper"
 	"api-students/middleware"
 	"api-students/routes"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func NewApp(logger *slog.Logger, pool *pgxpool.Pool, deps routes.Dependencies) *fiber.App {

@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"api-students/app/model"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 func RequestContext(c *fiber.Ctx) (context.Context, context.CancelFunc) {

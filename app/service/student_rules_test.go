@@ -1,8 +1,8 @@
 package service
 
 import (
-	"testing"
 	"api-students/app/model"
+	"testing"
 )
 
 func TestValidateCreate(t *testing.T) {
