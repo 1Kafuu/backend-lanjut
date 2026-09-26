@@ -14,3 +14,11 @@ func CurrentUser(c *fiber.Ctx) (model.AuthUser, bool) {
 	user, ok := c.Locals(LocalsAuthUser).(model.AuthUser)
 	return user, ok
 }
+
+
+func RequestID(c *fiber.Ctx) string {
+	if v, ok := c.Locals("requestid").(string); ok {
+		return v
+	}
+	return c.Get("X-Request-ID")
+}

@@ -1,8 +1,10 @@
 package config
 
 import (
+	"errors"
 	"log/slog"
 
+	"api-students/app/model"
 	"api-students/helper"
 	"api-students/middleware"
 	"api-students/routes"
@@ -27,17 +29,49 @@ func NewApp(logger *slog.Logger, pool *pgxpool.Pool, deps routes.Dependencies) *
 
 func newErrorHandler(logger *slog.Logger) fiber.ErrorHandler {
 	return func(c *fiber.Ctx, err error) error {
-		status := fiber.StatusInternalServerError
-		message := "terjadi error pada server"
-		if e, ok := err.(*fiber.Error); ok {
-			status = e.Code
-			message = e.Message
+		requestID := helper.RequestID(c)
+		var appErr *helper.AppError
+		switch {
+		case errors.As(err, &appErr):
+			// Kegagalan yang sudah direncakan
+		case errors.Is(err, fiber.ErrRequestEntityTooLarge):
+			appErr = &helper.AppError{Status: fiber.StatusRequestEntityTooLarge, Code: "PAYLOAD_TOO_LARGE", Message: "ukuran body melebihi batas yang diizinkan"}
+		default:
+			var fiberErr *fiber.Error
+			if errors.As(err, &fiberErr) {
+				appErr = &helper.AppError{Status: fiberErr.Code, Code: "HTTP_ERROR", Message: fiberErr.Message}
+			} else {
+				appErr = helper.Internal(err)
+			}
 		}
-		logger.Error("unhandled_error",
-			slog.String("path", c.Path()),
-			slog.Int("status", status),
-			slog.String("error", err.Error()),
-		)
-		return helper.Fail(c, status, message)
+		// Gunakan >= dibanding < agar error 4xx = Warn dan 5xx = Error
+		if appErr.Status >= fiber.StatusInternalServerError {
+			// Gunakan method Unwrap dari helper/errors.go untuk mengakses appErr.cause
+			causeStr := ""
+			if err := appErr.Unwrap(); err != nil {
+				causeStr = err.Error()
+			}
+			logger.Error("request_failed",
+				slog.String("request_id", requestID),
+				slog.String("path", c.Path()),
+				slog.String("code", appErr.Code),
+				slog.Int("status", appErr.Status),
+				slog.String("error", causeStr),
+			)
+		} else {
+			logger.Warn("request_rejected",
+				slog.String("request_id", requestID),
+				slog.String("path", c.Path()),
+				slog.String("code", appErr.Code),
+				slog.Int("status", appErr.Status),
+			)
+		}
+		return c.Status(appErr.Status).JSON(model.ErrorResponse{
+			Success:   false,
+			Code:      appErr.Code,
+			Message:   appErr.Message,
+			Fields:    appErr.Fields,
+			RequestID: requestID,
+		})
 	}
 }
