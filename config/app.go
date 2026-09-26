@@ -17,12 +17,12 @@ func NewApp(logger *slog.Logger, pool *pgxpool.Pool, deps routes.Dependencies) *
 	app := fiber.New(fiber.Config{
 		AppName:      GetENV("APP_NAME", "Praktikum Backend Lanjut"),
 		ErrorHandler: newErrorHandler(logger),
-		BodyLimit:    1 * 1024 * 1024, // 1 MB — prevents large-body DoS (Modul §8 Payload terlalu besar)
+		BodyLimit:    1 * 1024 * 1024,
 	})
 	middleware.Register(app, logger, GetENV("ALLOWED_ORIGINS", "http://localhost:5173"))
 	routes.Register(app, deps)
 	app.Use(func(c *fiber.Ctx) error {
-		return helper.Fail(c, fiber.StatusNotFound, "endpoint tidak ditemukan")
+		return helper.NotFound("endpoint tidak ditemukan")
 	})
 	return app
 }
