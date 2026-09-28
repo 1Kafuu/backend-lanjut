@@ -19,6 +19,7 @@ type UserRepository interface {
 	Update(ctx context.Context, id int, username, email string) (model.User, error)
 	Delete(ctx context.Context, id int) error
 	UpdateRole(ctx context.Context, id int, role string) (model.User, error)
+	FindAfterCursor(ctx context.Context, q model.CursorQuery) ([]model.User, error)
 }
 
 type userPostgresRepository struct {
@@ -181,4 +182,42 @@ func (r *userPostgresRepository) UpdateRole(ctx context.Context, id int, role st
 		return model.User{}, fmt.Errorf("mengubah role user: %w", err)
 	}
 	return u, nil
+}
+
+func (r *userPostgresRepository) FindAfterCursor(ctx context.Context, q model.CursorQuery) ([]model.User, error) {
+	args := []any{}
+	where := " WHERE 1=1"
+	if q.Search != "" {
+		args = append(args, "%"+q.Search+"%")
+		where += fmt.Sprintf(" AND username ILIKE $%d", len(args))
+	}
+	if q.IsActive != nil {
+		args = append(args, *q.IsActive)
+		where += fmt.Sprintf(" AND is_active = $%d", len(args))
+	}
+	if q.After != nil {
+		args = append(args, q.After.CreatedAt, q.After.ID)
+		where += fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", len(args)-1, len(args))
+	}
+	args = append(args, q.Limit+1)
+	query := fmt.Sprintf(
+		"SELECT id, username, email, password, role, is_active, created_at FROM users%s ORDER BY created_at DESC, id DESC LIMIT $%d",
+		where, len(args))
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("mengambil daftar user: %w", err)
+	}
+	defer rows.Close()
+	result := []model.User{}
+	for rows.Next() {
+		var u model.User
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Role, &u.IsActive, &u.CreatedAt); err != nil {
+			return nil, fmt.Errorf("membaca row user: %w", err)
+		}
+		result = append(result, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("membaca hasil query: %w", err)
+	}
+	return result, nil
 }

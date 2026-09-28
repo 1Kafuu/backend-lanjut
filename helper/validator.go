@@ -33,6 +33,18 @@ func newValidator() *validator.Validate {
 		}
 		return true
 	})
+	_ = v.RegisterValidation("nim", func(fl validator.FieldLevel) bool {
+		s := fl.Field().String()
+		if len(s) < 8 || len(s) > 12 {
+			return false
+		}
+		for _, r := range s {
+			if r < '0' || r > '9' {
+				return false
+			}
+		}
+		return true
+	})
 	_ = v.RegisterValidation("strongpassword", func(fl validator.FieldLevel) bool {
 		return checkPasswordStrength(fl.Field().String()) == ""
 	})
@@ -109,6 +121,8 @@ func messageFor(fe validator.FieldError) string {
 		return "tidak boleh mengandung spasi"
 	case "username":
 		return "hanya boleh huruf, angka, titik, dan garis bawah"
+	case "nim":
+		return "NIM harus berupa angka 8-12 digit"
 	case "strongpassword":
 		if value, ok := fe.Value().(string); ok {
 			if msg := checkPasswordStrength(value); msg != "" {

@@ -8,16 +8,17 @@ import (
 
 // Stable machine-readable codes (contract, never change Message).
 const (
-	CodeValidation       = "VALIDATION_ERROR"
-	CodeBadRequest       = "BAD_REQUEST"
-	CodeUnauthorized     = "UNAUTHORIZED"
-	CodeForbidden        = "FORBIDDEN"
-	CodeNotFound         = "NOT_FOUND"
-	CodeConflict         = "CONFLICT"
-	CodeUnsupportedMedia = "UNSUPPORTED_MEDIA_TYPE"
-	CodeNotAcceptable    = "NOT_ACCEPTABLE"
-	CodeTooManyRequests  = "TOO_MANY_REQUESTS"
-	CodeInternal         = "INTERNAL_ERROR"
+	CodeValidation         = "VALIDATION_ERROR"
+	CodeBadRequest         = "BAD_REQUEST"
+	CodeUnauthorized       = "UNAUTHORIZED"
+	CodeForbidden          = "FORBIDDEN"
+	CodeNotFound           = "NOT_FOUND"
+	CodeConflict           = "CONFLICT"
+	CodeUnsupportedMedia   = "UNSUPPORTED_MEDIA_TYPE"
+	CodeNotAcceptable      = "NOT_ACCEPTABLE"
+	CodeTooManyRequests    = "TOO_MANY_REQUESTS"
+	CodeServiceUnavailable = "SERVICE_UNAVAILABLE"
+	CodeInternal           = "INTERNAL_ERROR"
 )
 
 // AppError is the only error type in the app. Does NOT touch fiber.Ctx.
@@ -63,6 +64,9 @@ func UnsupportedMediaType(m string) *AppError {
 }
 func TooManyRequests(m string) *AppError {
 	return &AppError{Status: fiber.StatusTooManyRequests, Code: CodeTooManyRequests, Message: m}
+}
+func ServiceUnavailable(cause error) *AppError {
+	return &AppError{Status: fiber.StatusServiceUnavailable, Code: CodeServiceUnavailable, Message: "layanan sementara tidak tersedia", cause: cause}
 }
 func Internal(cause error) *AppError {
 	return &AppError{Status: fiber.StatusInternalServerError, Code: CodeInternal, Message: "terjadi kesalahan pada server", cause: cause}

@@ -2,6 +2,7 @@ package service
 
 import (
 	"api-students/app/model"
+	"api-students/helper"
 	"testing"
 )
 
@@ -11,10 +12,7 @@ func TestApplyPatch(t *testing.T) {
 	newName := "sari barru"
 	newGrade := 3.8
 	// patch is_active
-	result, errs := ApplyPatch(initial, model.PatchStudentRequest{IsActive: &inactive})
-	if len(errs) != 0 {
-		t.Fatalf("unexpected errs %v", errs)
-	}
+	result := ApplyPatch(initial, model.PatchStudentRequest{IsActive: &inactive})
 	if result.IsActive != false {
 		t.Error("is_active should be false")
 	}
@@ -22,18 +20,20 @@ func TestApplyPatch(t *testing.T) {
 		t.Error("name should not change when not patched")
 	}
 	// patch name & grade
-	result2, errs := ApplyPatch(initial, model.PatchStudentRequest{Name: &newName, Grade: &newGrade})
-	if len(errs) != 0 {
-		t.Fatalf("unexpected errs %v", errs)
-	}
+	result2 := ApplyPatch(initial, model.PatchStudentRequest{Name: &newName, Grade: &newGrade})
 	if result2.Name != "sari barru" || result2.Grade != 3.8 {
 		t.Errorf("patch failed got %+v", result2)
 	}
-	// invalid patch
+	// invalid input ditolak di lapis validasi, bukan merge:
+	// merge murni tidak menolak apa pun, bahkan string kosong
 	empty := ""
-	_, errs = ApplyPatch(initial, model.PatchStudentRequest{Name: &empty})
-	if errs["name"] == "" {
-		t.Error("expected name empty error")
+	result3 := ApplyPatch(initial, model.PatchStudentRequest{Name: &empty})
+	if result3.Name != "" {
+		t.Errorf("pure merge must apply as-is, got %q", result3.Name)
+	}
+	// ...sedangkan validator menolaknya:
+	if errs := helper.ValidateStruct(model.PatchStudentRequest{Name: &empty}); errs["name"] == "" {
+		t.Error("empty name should fail ValidateStruct")
 	}
 }
 

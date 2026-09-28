@@ -19,20 +19,6 @@ func NewUserService(repo repository.UserRepository, perms *helper.PermissionSet)
 	return &UserService{repo: repo, perms: perms}
 }
 
-func patchFieldErrors(username, email string) map[string]string {
-	errs := map[string]string{}
-	if username == "" {
-		errs["username"] = "tidak boleh kosong"
-	}
-	if email == "" {
-		errs["email"] = "tidak boleh kosong"
-	}
-	if len(errs) == 0 {
-		return nil
-	}
-	return errs
-}
-
 func (s *UserService) List(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -43,14 +29,32 @@ func (s *UserService) List(c *fiber.Ctx) error {
 	if !s.perms.Can(current.Role, "user:list") {
 		return helper.Forbidden("role " + current.Role + " tidak memiliki hak user:list")
 	}
-	q := helper.ParseListQuery(c)
-	users, total, err := s.repo.FindAll(ctx, q)
+	// Content negotiation BEFORE query (Langkah 8)
+	format, err := helper.Negotiate(c, helper.FormatJSON, helper.FormatCSV)
+	if err != nil {
+		return err
+	}
+	q, err := helper.ParseCursorQuery(c)
+	if err != nil {
+		return err
+	}
+	rows, err := s.repo.FindAfterCursor(ctx, q)
 	if err != nil {
 		return helper.Internal(err)
 	}
-	return helper.SuccessList(c, "daftar user berhasil diambil", users, &model.Meta{
-		Page: q.Page, Limit: q.Limit, Total: total, TotalPages: CountTotalPages(total, q.Limit),
-	})
+	hasMore := len(rows) > q.Limit
+	if hasMore {
+		rows = rows[:q.Limit]
+	}
+	meta := &model.CursorMeta{Limit: q.Limit, HasMore: hasMore}
+	if hasMore && len(rows) > 0 {
+		last := rows[len(rows)-1]
+		meta.NextCursor = helper.EncodeCursor(last.CreatedAt, last.ID)
+	}
+	if format == helper.FormatCSV {
+		return helper.WriteUsersCSV(c, rows)
+	}
+	return helper.SuccessCursor(c, "daftar user berhasil diambil", rows, meta)
 }
 
 func (s *UserService) Get(c *fiber.Ctx) error {

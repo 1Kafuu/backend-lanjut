@@ -142,11 +142,10 @@ func (s *StudentService) Patch(c *fiber.Ctx) error {
 	if !CanAccessStudent(current, saatIni.OwnerID, s.perms, "student:update:any") {
 		return helper.Forbidden("tidak berhak mengubah data mahasiswa lain")
 	}
-	updated, errs := ApplyPatch(saatIni, req)
-	if len(errs) > 0 {
+	if errs := helper.ValidateStruct(req); errs != nil {
 		return helper.Validation(errs)
 	}
-	hasil, err := s.repo.Update(ctx, updated)
+	hasil, err := s.repo.Update(ctx, ApplyPatch(saatIni, req))
 	if err != nil {
 		return translateError(err, "mahasiswa")
 	}

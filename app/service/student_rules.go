@@ -5,33 +5,20 @@ import (
 	"strings"
 )
 
-func ApplyPatch(current model.Student, req model.PatchStudentRequest) (model.Student, map[string]string) {
-	errs := map[string]string{}
+func ApplyPatch(current model.Student, req model.PatchStudentRequest) model.Student {
 	if req.Name != nil {
-		if strings.TrimSpace(*req.Name) == "" {
-			errs["name"] = "tidak boleh kosong"
-		} else {
-			current.Name = strings.TrimSpace(*req.Name)
-		}
+		current.Name = strings.TrimSpace(*req.Name)
 	}
 	if req.NIM != nil {
-		if *req.NIM == 0 {
-			errs["nim"] = "tidak valid"
-		} else {
-			current.NIM = *req.NIM
-		}
+		current.NIM = *req.NIM
 	}
 	if req.Grade != nil {
-		if *req.Grade < 0 || *req.Grade > 4 {
-			errs["grade"] = "grade harus 0.0 - 4.0"
-		} else {
-			current.Grade = *req.Grade
-		}
+		current.Grade = *req.Grade
 	}
 	if req.IsActive != nil {
 		current.IsActive = *req.IsActive
 	}
-	return current, errs
+	return current
 }
 
 func IsEmptyPatch(req model.PatchStudentRequest) bool {
