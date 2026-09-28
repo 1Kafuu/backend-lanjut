@@ -5,38 +5,6 @@ import (
 	"testing"
 )
 
-func TestValidateCreate(t *testing.T) {
-	// valid case
-	if errs := ValidateCreate(model.CreateStudentRequest{NIM: 123, Name: "Sari", Grade: 3.5}); len(errs) != 0 {
-		t.Fatalf("expected no errs, got %v", errs)
-	}
-	// invalid all
-	errs := ValidateCreate(model.CreateStudentRequest{NIM: 0, Name: "", Grade: 5})
-	if errs["name"] == "" || errs["nim"] == "" || errs["grade"] == "" {
-		t.Errorf("expected all fields error, got %v", errs)
-	}
-	// grade boundary
-	errs = ValidateCreate(model.CreateStudentRequest{NIM: 1, Name: "A", Grade: -0.1})
-	if errs["grade"] == "" {
-		t.Error("expected grade error for -0.1")
-	}
-}
-
-func TestValidateReplace(t *testing.T) {
-	grade := 3.0
-	active := true
-	// valid
-	req := model.ReplaceStudentRequest{Name: "Budi", NIM: 456, Grade: &grade, IsActive: &active}
-	if errs := ValidateReplace(req); len(errs) != 0 {
-		t.Fatalf("expected no errs, got %v", errs)
-	}
-	// missing grade
-	req2 := model.ReplaceStudentRequest{Name: "Budi", NIM: 456, IsActive: &active, Grade: nil}
-	if errs := ValidateReplace(req2); errs["grade"] == "" {
-		t.Error("expected grade required error")
-	}
-}
-
 func TestApplyPatch(t *testing.T) {
 	initial := model.Student{ID: 1, NIM: 111, Name: "sari", Grade: 3.0, IsActive: true}
 	inactive := false

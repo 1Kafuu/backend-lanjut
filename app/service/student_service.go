@@ -70,7 +70,7 @@ func (s *StudentService) Create(c *fiber.Ctx) error {
 		return helper.BadRequest("body harus berupa JSON yang valid")
 	}
 	req.Name = strings.TrimSpace(req.Name)
-	if errs := ValidateCreate(req); len(errs) > 0 {
+	if errs := helper.ValidateStruct(req); len(errs) > 0 {
 		return helper.Validation(errs)
 	}
 	ownerID := current.UserID
@@ -98,7 +98,7 @@ func (s *StudentService) Replace(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return helper.BadRequest("body harus berupa JSON yang valid")
 	}
-	if errs := ValidateReplace(req); len(errs) > 0 {
+	if errs := helper.ValidateStruct(req); len(errs) > 0 {
 		return helper.Validation(errs)
 	}
 	saatIni, err := s.repo.FindByID(ctx, id)
@@ -161,7 +161,7 @@ func (s *StudentService) Delete(c *fiber.Ctx) error {
 		return helper.Unauthorized("belum terautentikasi")
 	}
 	if !s.perms.Can(current.Role, "student:delete") {
-		return helper.Forbidden("role "+current.Role+" tidak memiliki hak")
+		return helper.Forbidden("role " + current.Role + " tidak memiliki hak")
 	}
 	id, valid := helper.ParamID(c)
 	if !valid {

@@ -88,17 +88,14 @@ func (s *UserService) Replace(c *fiber.Ctx) error {
 	if !CanAccessUser(current, id, s.perms, "user:update:any") {
 		return helper.Forbidden("tidak berhak mengubah data user lain")
 	}
-	var req struct {
-		Username string `json:"username"`
-		Email    string `json:"email"`
-	}
+	var req model.ReplaceUserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return helper.BadRequest("body harus berupa JSON yang valid")
 	}
 	req.Username = strings.TrimSpace(req.Username)
 	req.Email = strings.TrimSpace(req.Email)
-	if req.Username == "" || req.Email == "" {
-		return helper.BadRequest("username dan email wajib diisi")
+	if errs := helper.ValidateStruct(req); errs != nil {
+		return helper.Validation(errs)
 	}
 	updated, err := s.repo.Update(ctx, id, req.Username, req.Email)
 	if err != nil {
@@ -122,27 +119,23 @@ func (s *UserService) Patch(c *fiber.Ctx) error {
 	if !CanAccessUser(current, id, s.perms, "user:update:any") {
 		return helper.Forbidden("tidak berhak mengubah data user lain")
 	}
-	var req map[string]string
+	var req model.PatchUserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return helper.BadRequest("body harus berupa JSON yang valid")
 	}
-	// ambil existing untuk patch
+	if IsEmptyUserPatch(req) {
+		return helper.BadRequest("tidak ada field yang diubah")
+	}
 	existing, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return translateError(err, "user")
 	}
-	username := existing.Username
-	email := existing.Email
-	if v, ok := req["username"]; ok {
-		username = strings.TrimSpace(v)
-	}
-	if v, ok := req["email"]; ok {
-		email = strings.TrimSpace(v)
-	}
-	if errs := patchFieldErrors(username, email); errs != nil {
+	// Validasi dulu (tag omitnil), baru merge murni
+	if errs := helper.ValidateStruct(req); errs != nil {
 		return helper.Validation(errs)
 	}
-	updated, err := s.repo.Update(ctx, id, username, email)
+	merged := ApplyUserPatch(existing, req)
+	updated, err := s.repo.Update(ctx, id, merged.Username, merged.Email)
 	if err != nil {
 		return translateError(err, "user")
 	}

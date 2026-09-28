@@ -44,7 +44,7 @@ func (s *AuthService) Register(c *fiber.Ctx) error {
 	}
 	req.Username = strings.TrimSpace(req.Username)
 	req.Email = strings.TrimSpace(req.Email)
-	if errs := ValidateRegister(req); len(errs) > 0 {
+	if errs := helper.ValidateStruct(req); len(errs) > 0 {
 		return helper.Validation(errs)
 	}
 	hashed, err := helper.HashPassword(req.Password)
