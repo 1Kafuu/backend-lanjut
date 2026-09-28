@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -48,7 +49,7 @@ func (s *AuthService) Register(c *fiber.Ctx) error {
 	}
 	hashed, err := helper.HashPassword(req.Password)
 	if err != nil {
-		return helper.Internal(err)
+		return helper.Internal(fmt.Errorf("gagal memproses password: %w", err))
 	}
 	created, err := s.users.Create(ctx, model.User{
 		Username: req.Username,
@@ -89,7 +90,7 @@ func (s *AuthService) Login(c *fiber.Ctx) error {
 	}
 	pair, err := s.issueTokenPair(ctx, user)
 	if err != nil {
-		return helper.Internal(err)
+		return helper.Internal(fmt.Errorf("gagal membuat token: %w", err))
 	}
 	return helper.Success(c, fiber.StatusOK, "login berhasil", pair)
 }
@@ -115,11 +116,11 @@ func (s *AuthService) Refresh(c *fiber.Ctx) error {
 	}
 	// Rotation: revoke old immediately
 	if err := s.tokens.Revoke(ctx, hash); err != nil {
-		return helper.Internal(err)
+		return helper.Internal(fmt.Errorf("gagal memperbarui token: %w", err))
 	}
 	pair, err := s.issueTokenPair(ctx, user)
 	if err != nil {
-		return helper.Internal(err)
+		return helper.Internal(fmt.Errorf("gagal membuat token: %w", err))
 	}
 	return helper.Success(c, fiber.StatusOK, "token berhasil diperbarui", pair)
 }
