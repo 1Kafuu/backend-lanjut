@@ -12,11 +12,12 @@ import (
 // CourseService menangani operasi kelas dan KRS.
 type CourseService struct {
 	courses repository.CourseRepository
+	tx      *repository.TxManager
 }
 
 // NewCourseService membuat service dengan repository kelas.
-func NewCourseService(courses repository.CourseRepository) *CourseService {
-	return &CourseService{courses: courses}
+func NewCourseService(courses repository.CourseRepository, tx *repository.TxManager) *CourseService {
+	return &CourseService{courses: courses, tx: tx}
 }
 
 // List mengembalikan seluruh kelas.

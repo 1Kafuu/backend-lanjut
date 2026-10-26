@@ -62,7 +62,8 @@ func main() {
 	prestasiService := service.NewPrestasiService(prestasiRepository, studentRepository)
 	authService := service.NewAuthService(userRepository, tokenRepository, jwtManager, perms, refreshTTL)
 	courseRepository := repository.NewCourseRepository(pool)
-	courseService := service.NewCourseService(courseRepository)
+	txManager := repository.NewTxManager(pool)
+	courseService := service.NewCourseService(courseRepository, txManager)
 
 	app := config.NewApp(logger, pool, routes.Dependencies{
 		Pool:            pool,
