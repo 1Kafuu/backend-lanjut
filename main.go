@@ -61,6 +61,8 @@ func main() {
 	prestasiRepository := repository.NewPrestasiReporsitory(pool)
 	prestasiService := service.NewPrestasiService(prestasiRepository, studentRepository)
 	authService := service.NewAuthService(userRepository, tokenRepository, jwtManager, perms, refreshTTL)
+	courseRepository := repository.NewCourseRepository(pool)
+	courseService := service.NewCourseService(courseRepository)
 
 	app := config.NewApp(logger, pool, routes.Dependencies{
 		Pool:            pool,
@@ -70,6 +72,7 @@ func main() {
 		PrestasiService: prestasiService,
 		UserService:     userService,
 		AuthService:     authService,
+		CourseService:   courseService,
 	})
 
 	port := config.GetENV("APP_PORT", "3000")

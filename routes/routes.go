@@ -21,6 +21,7 @@ type Dependencies struct {
 	UserService     *service.UserService
 	PrestasiService *service.PrestasiService
 	AuthService     *service.AuthService
+	CourseService   *service.CourseService
 }
 
 func Register(app *fiber.App, deps Dependencies) {
@@ -57,6 +58,13 @@ func Register(app *fiber.App, deps Dependencies) {
 	users.Patch("/:id", deps.UserService.Patch)
 	users.Delete("/:id", deps.UserService.Delete)
 	users.Patch("/:id/role", middleware.RequirePermission(deps.Permissions, "role:assign"), deps.UserService.AssignRole)
+
+	courses := api.Group("/courses",
+		middleware.RequireJSON,
+		middleware.RequireAuth(deps.JWT))
+	courses.Get("/", deps.CourseService.List)
+	courses.Get("/mine", deps.CourseService.Mine)
+	courses.Get("/:id", deps.CourseService.Get)
 }
 
 func healthCheck(pool *pgxpool.Pool) fiber.Handler {
