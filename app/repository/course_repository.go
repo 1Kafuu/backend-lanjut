@@ -19,6 +19,7 @@ type CourseRepository interface {
 	FindByStudent(ctx context.Context, userID int) ([]model.Course, error)
 
 	LockStudent(ctx context.Context, userID int) error
+	LockCourses(ctx context.Context, ids ...int) error
 	SumCredits(ctx context.Context, userID int) (int, error)
 	IncrementEnrolled(ctx context.Context, courseID int) (model.Course, error)
 	DecrementEnrolled(ctx context.Context, courseID int) (model.Course, error)
@@ -181,6 +182,29 @@ func (r *coursePostgresRepository) DeleteEnrollment(ctx context.Context, courseI
 		"DELETE FROM enrollments WHERE course_id = $1 AND user_id = $2", courseID, userID)
 	if err != nil {
 		return fmt.Errorf("menghapus pendaftaran: %w", err)
+	}
+	return nil
+}
+
+// LockCourses mengunci beberapa kelas dalam urutan id menaik, apa pun urutan
+// argumennya. Urutan yang seragam ini yang mencegah deadlock.
+func (r *coursePostgresRepository) LockCourses(ctx context.Context, ids ...int) error {
+	rows, err := r.db.Query(ctx,
+		"SELECT id FROM courses WHERE id = ANY($1) ORDER BY id FOR UPDATE", ids)
+	if err != nil {
+		return fmt.Errorf("mengunci kelas: %w", err)
+	}
+	defer rows.Close()
+
+	found := 0
+	for rows.Next() {
+		found++
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("mengunci kelas: %w", err)
+	}
+	if found != len(ids) {
+		return ErrNotFound
 	}
 	return nil
 }
