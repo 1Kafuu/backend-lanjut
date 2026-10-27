@@ -48,7 +48,10 @@ func (m *TxManager) runOnce(ctx context.Context, fn func(tx DBTX) error) error {
 		return fmt.Errorf("memulai transaction: %w", err)
 	}
 
-	// Baris rollback otomatis yang hilang merupakan bug puzzle
+	// Selalu jadwalkan Rollback, termasuk jalur sukses. Tanpa ini, setiap
+	// kegagalan meninggalkan transaction terbuka yang menahan koneksi pool.
+	defer tx.Rollback(ctx)
+
 	if err := fn(tx); err != nil {
 		return err
 	}
