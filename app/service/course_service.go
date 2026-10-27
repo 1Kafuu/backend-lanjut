@@ -233,10 +233,9 @@ func (s *CourseService) Swap(c *fiber.Ctx) error {
 		if err := repo.DeleteEnrollment(ctx, req.FromCourseID, current.UserID); err != nil {
 			return err
 		}
-		// BUG SEMENTARA - Berita Acara 8: seharusnya repo, bukan s.courses.
-		// s.courses terikat pada pool, jadi UPDATE ini berjalan di luar
-		// transaction dan beradu kunci dengan LockCourses sampai context habis.
-		if _, err := s.courses.DecrementEnrolled(ctx, req.FromCourseID); err != nil {
+		// repo, bukan s.courses: semua baca dan tulis harus memakai koneksi
+		// transaction yang sama supaya atomik dan tidak mengunci diri sendiri.
+		if _, err := repo.DecrementEnrolled(ctx, req.FromCourseID); err != nil {
 			return err
 		}
 
