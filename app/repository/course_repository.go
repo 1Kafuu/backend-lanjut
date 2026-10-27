@@ -216,14 +216,12 @@ func (r *coursePostgresRepository) LockCourses(ctx context.Context, ids ...int) 
 }
 
 // UpdateQuota menerapkan optimistic locking: UPDATE hanya berhasil bila
-// version di database masih sama dengan version yang dikirim client.
-// Syarat kuota tidak lebih kecil dari jumlah peserta juga ditulis di WHERE
-// agar pemeriksaan dan perubahan terjadi dalam satu langkah.
-// BUG SEMENTARA - Berita Acara 9: SET belum menaikkan version, sehingga dua
-// PATCH berurutan sama-sama lolos.
+// version di database masih sama dengan version yang dikirim client. Setiap
+// perubahan yang berhasil menaikkan version tepat satu. Syarat kuota tidak
+// lebih kecil dari jumlah peserta juga ditulis di WHERE.
 func (r *coursePostgresRepository) UpdateQuota(ctx context.Context, id, quota, version int) (model.Course, error) {
 	c, err := scanCourse(r.db.QueryRow(ctx,
-		`UPDATE courses SET quota = $1
+		`UPDATE courses SET quota = $1, version = version + 1
 		 WHERE id = $2 AND version = $3 AND $1 >= enrolled_count
 		 RETURNING `+courseColumns, quota, id, version))
 	if err == nil {
