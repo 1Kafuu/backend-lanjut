@@ -71,3 +71,9 @@ func ServiceUnavailable(cause error) *AppError {
 func Internal(cause error) *AppError {
 	return &AppError{Status: fiber.StatusInternalServerError, Code: CodeInternal, Message: "terjadi kesalahan pada server", cause: cause}
 }
+
+// NewError creates an error with a custom status and code, for failures that
+// need a more specific code than the generic ones above.
+func NewError(status int, code, message string) *AppError {
+	return &AppError{Status: status, Code: code, Message: message}
+}
