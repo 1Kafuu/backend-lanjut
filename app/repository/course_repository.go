@@ -144,14 +144,13 @@ func (r *coursePostgresRepository) SumCredits(ctx context.Context, userID int) (
 	return total, nil
 }
 
-// IncrementEnrolled mengambil satu kursi secara atomik. Bila tidak ada baris
-// yang cocok, artinya kuota penuh.
-// BUG SEMENTARA - Berita Acara 6: syaratnya memakai <=, seharusnya <,
-// sehingga kursi terakhir ditolak oleh constraint CHECK dengan 500.
+// IncrementEnrolled mengambil satu kursi secara atomik. Keputusan "masih ada
+// kursi?" dan "tambah satu kursi" terjadi dalam satu pernyataan SQL. Syaratnya
+// <, bukan <=, supaya kursi terakhir ditolak rapi sebagai nol baris.
 func (r *coursePostgresRepository) IncrementEnrolled(ctx context.Context, courseID int) (model.Course, error) {
 	c, err := scanCourse(r.db.QueryRow(ctx,
 		`UPDATE courses SET enrolled_count = enrolled_count + 1
-		 WHERE id = $1 AND enrolled_count <= quota
+		 WHERE id = $1 AND enrolled_count < quota
 		 RETURNING `+courseColumns, courseID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
