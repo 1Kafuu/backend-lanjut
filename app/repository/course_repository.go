@@ -25,13 +25,16 @@ type CourseRepository interface {
 	DecrementEnrolled(ctx context.Context, courseID int) (model.Course, error)
 	InsertEnrollment(ctx context.Context, courseID, userID int) error
 	DeleteEnrollment(ctx context.Context, courseID, userID int) error
+	UpdateQuota(ctx context.Context, id, quota, version int) (model.Course, error)
 }
 
 const courseColumns = `id, code, name, credits, quota, enrolled_count, version, created_at`
 
 var (
-	ErrCourseFull  = errors.New("kuota kelas sudah penuh")
-	ErrNotEnrolled = errors.New("tidak terdaftar di kelas ini")
+	ErrCourseFull       = errors.New("kuota kelas sudah penuh")
+	ErrNotEnrolled      = errors.New("tidak terdaftar di kelas ini")
+	ErrVersionConflict  = errors.New("data sudah diubah pihak lain")
+	ErrQuotaBelowFilled = errors.New("kuota lebih kecil dari jumlah peserta")
 )
 
 type coursePostgresRepository struct{ db DBTX }
@@ -207,4 +210,33 @@ func (r *coursePostgresRepository) LockCourses(ctx context.Context, ids ...int) 
 		return ErrNotFound
 	}
 	return nil
+}
+
+// UpdateQuota menerapkan optimistic locking: UPDATE hanya berhasil bila
+// version di database masih sama dengan version yang dikirim client.
+// Syarat kuota tidak lebih kecil dari jumlah peserta juga ditulis di WHERE
+// agar pemeriksaan dan perubahan terjadi dalam satu langkah.
+// BUG SEMENTARA - Berita Acara 9: SET belum menaikkan version, sehingga dua
+// PATCH berurutan sama-sama lolos.
+func (r *coursePostgresRepository) UpdateQuota(ctx context.Context, id, quota, version int) (model.Course, error) {
+	c, err := scanCourse(r.db.QueryRow(ctx,
+		`UPDATE courses SET quota = $1
+		 WHERE id = $2 AND version = $3 AND $1 >= enrolled_count
+		 RETURNING `+courseColumns, quota, id, version))
+	if err == nil {
+		return c, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return model.Course{}, fmt.Errorf("mengubah kuota: %w", err)
+	}
+
+	// Tidak ada baris yang cocok: version bergeser, atau kuota terlalu kecil.
+	current, findErr := r.FindByID(ctx, id)
+	if findErr != nil {
+		return model.Course{}, findErr
+	}
+	if current.Version != version {
+		return model.Course{}, ErrVersionConflict
+	}
+	return model.Course{}, ErrQuotaBelowFilled
 }

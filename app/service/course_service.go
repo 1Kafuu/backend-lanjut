@@ -253,6 +253,34 @@ func (s *CourseService) Swap(c *fiber.Ctx) error {
 	return helper.Success(c, fiber.StatusOK, "berhasil pindah kelas", joined)
 }
 
+// UpdateQuota mengubah kuota kelas dengan optimistic locking.
+//
+// Dijaga middleware course:manage. Cukup satu pernyataan UPDATE, jadi tidak
+// perlu WithTx: pernyataan tunggal di PostgreSQL sudah atomik.
+func (s *CourseService) UpdateQuota(c *fiber.Ctx) error {
+	ctx, cancel := helper.RequestContext(c)
+	defer cancel()
+
+	id, valid := helper.ParamID(c)
+	if !valid {
+		return helper.BadRequest("id harus berupa angka positif")
+	}
+
+	var req model.UpdateQuotaRequest
+	if err := c.BodyParser(&req); err != nil {
+		return helper.BadRequest("body harus berupa JSON yang valid")
+	}
+	if errs := helper.ValidateStruct(req); errs != nil {
+		return helper.Validation(errs)
+	}
+
+	updated, err := s.courses.UpdateQuota(ctx, id, req.Quota, req.Version)
+	if err != nil {
+		return translateCourseError(err)
+	}
+	return helper.Success(c, fiber.StatusOK, "kuota berhasil diubah", updated)
+}
+
 // translateCourseError memetakan error repository dan aturan bisnis menjadi response HTTP. Hanya fungsi ini yang mengetahui kode error repository.
 func translateCourseError(err error) error {
 	switch {
@@ -267,6 +295,12 @@ func translateCourseError(err error) error {
 	case errors.Is(err, errCreditLimit):
 		return helper.NewError(fiber.StatusConflict, "CREDIT_LIMIT_EXCEEDED",
 			"batas "+strconv.Itoa(MaxCreditsPerSemester)+" SKS terlampaui")
+	case errors.Is(err, repository.ErrVersionConflict):
+		return helper.NewError(fiber.StatusConflict, "VERSION_CONFLICT",
+			"data kelas sudah diubah pihak lain, muat ulang lalu coba lagi")
+	case errors.Is(err, repository.ErrQuotaBelowFilled):
+		return helper.NewError(fiber.StatusConflict, "QUOTA_BELOW_ENROLLED",
+			"kuota tidak boleh lebih kecil dari jumlah peserta saat ini")
 	default:
 		return helper.Internal(err)
 	}
