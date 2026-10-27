@@ -115,12 +115,12 @@ func (r *coursePostgresRepository) InsertEnrollment(ctx context.Context, courseI
 }
 
 // LockStudent mengunci row milik satu mahasiswa sampai transaction selesai.
-// BUG SEMENTARA - Berita Acara 5: query ini belum memakai FOR UPDATE,
-// sehingga tidak mengunci apa pun.
+// FOR UPDATE membuat transaction lain milik mahasiswa yang sama menunggu di
+// sini, sehingga pemeriksaan SKS dan penyimpanan terjadi tanpa sela.
 func (r *coursePostgresRepository) LockStudent(ctx context.Context, userID int) error {
 	var id int
 	err := r.db.QueryRow(ctx,
-		"SELECT id FROM users WHERE id = $1", userID).Scan(&id)
+		"SELECT id FROM users WHERE id = $1 FOR UPDATE", userID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
