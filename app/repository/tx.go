@@ -6,7 +6,6 @@ import (
 	"math/rand/v2"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -24,8 +23,7 @@ func NewTxManager(pool *pgxpool.Pool) *TxManager {
 
 // WithTx menjalankan callback dalam transaction dan mengulang deadlock
 // atau serialization failure.
-// BUG SEMENTARA - callback memakai pgx.Tx, bukan DBTX.
-func (m *TxManager) WithTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
+func (m *TxManager) WithTx(ctx context.Context, fn func(tx DBTX) error) error {
 	var err error
 	for attempt := 1; attempt <= m.maxAttempts; attempt++ {
 		err = m.runOnce(ctx, fn)
@@ -44,8 +42,7 @@ func (m *TxManager) WithTx(ctx context.Context, fn func(tx pgx.Tx) error) error 
 }
 
 // runOnce menjalankan callback dalam satu transaction.
-// BUG SEMENTARA - callback masih memakai pgx.Tx.
-func (m *TxManager) runOnce(ctx context.Context, fn func(tx pgx.Tx) error) error {
+func (m *TxManager) runOnce(ctx context.Context, fn func(tx DBTX) error) error {
 	tx, err := m.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("memulai transaction: %w", err)
