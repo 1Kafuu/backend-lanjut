@@ -176,14 +176,18 @@ func (r *coursePostgresRepository) DecrementEnrolled(ctx context.Context, course
 	return c, nil
 }
 
-// DeleteEnrollment menghapus pendaftaran.
-// BUG SEMENTARA - Berita Acara 7: RowsAffected belum diperiksa, sehingga
-// pemanggil mengurangi jumlah peserta untuk pendaftaran yang tidak ada.
+// DeleteEnrollment menghapus pendaftaran sambil memeriksa apakah memang ada
+// yang terhapus. DELETE tanpa baris bukan error menurut PostgreSQL, jadi
+// RowsAffected harus diperiksa agar pemanggil tidak mengurangi jumlah peserta
+// untuk pendaftaran yang tidak pernah ada.
 func (r *coursePostgresRepository) DeleteEnrollment(ctx context.Context, courseID, userID int) error {
-	_, err := r.db.Exec(ctx,
+	tag, err := r.db.Exec(ctx,
 		"DELETE FROM enrollments WHERE course_id = $1 AND user_id = $2", courseID, userID)
 	if err != nil {
 		return fmt.Errorf("menghapus pendaftaran: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotEnrolled
 	}
 	return nil
 }
