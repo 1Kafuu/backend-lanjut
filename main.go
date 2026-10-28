@@ -49,7 +49,6 @@ func main() {
 	}()
 
 	mongoDB := mongoClient.Database(config.GetENV("MONGO_DATABASE", "praktikum-backend-mongo"))
-	_ = mongoDB
 
 	jwtManager := helper.NewJWTManager(
 		jwtSecret,
@@ -78,6 +77,12 @@ func main() {
 	courseRepository := repository.NewCourseRepository(pool)
 	txManager := repository.NewTxManager(pool)
 	courseService := service.NewCourseService(courseRepository, txManager)
+	reviewRepository := repository.NewReviewRepository(mongoDB)
+	if err := reviewRepository.EnsureIndexes(context.Background()); err != nil {
+		logger.Error("gagal membuat index MongoDB", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	reviewService := service.NewReviewService(reviewRepository, courseRepository, perms)
 
 	app := config.NewApp(logger, pool, routes.Dependencies{
 		Pool:            pool,
@@ -89,6 +94,7 @@ func main() {
 		UserService:     userService,
 		AuthService:     authService,
 		CourseService:   courseService,
+		ReviewService:   reviewService,
 	})
 
 	port := config.GetENV("APP_PORT", "3000")

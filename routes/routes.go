@@ -23,6 +23,7 @@ type Dependencies struct {
 	PrestasiService *service.PrestasiService
 	AuthService     *service.AuthService
 	CourseService   *service.CourseService
+	ReviewService   *service.ReviewService
 }
 
 func Register(app *fiber.App, deps Dependencies) {
@@ -63,12 +64,26 @@ func Register(app *fiber.App, deps Dependencies) {
 	courses := api.Group("/courses",
 		middleware.RequireJSON,
 		middleware.RequireAuth(deps.JWT))
+
+	courses.Get("/:id/reviews/summary", deps.ReviewService.Summary)
+	courses.Get("/:id/reviews", deps.ReviewService.ListByCourse)
+	courses.Post("/:id/reviews", deps.ReviewService.Create)
+
 	courses.Get("/", deps.CourseService.List)
 	courses.Get("/mine", deps.CourseService.Mine)
 	courses.Get("/:id", deps.CourseService.Get)
 	courses.Patch("/:id", middleware.RequirePermission(deps.Permissions, "course:manage"), deps.CourseService.UpdateQuota)
 	courses.Post("/:id/enroll", deps.CourseService.Enroll)
 	courses.Delete("/:id/enroll", deps.CourseService.Drop)
+
+	reviews := api.Group("/reviews",
+		middleware.RequireJSON,
+		middleware.RequireAuth(deps.JWT))
+	reviews.Get("/:id", deps.ReviewService.Get)
+	reviews.Patch("/:id", deps.ReviewService.Update)
+	reviews.Delete("/:id", deps.ReviewService.Delete)
+	reviews.Post("/:id/replies", deps.ReviewService.Reply)
+	reviews.Post("/:id/helpful", deps.ReviewService.MarkHelpful)
 
 	// pindah kelas
 	enrollments := api.Group("/enrollments",
