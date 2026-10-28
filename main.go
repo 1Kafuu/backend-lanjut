@@ -32,10 +32,24 @@ func main() {
 
 	pool, err := database.NewPool(context.Background())
 	if err != nil {
-		logger.Error("gagal terhubung ke database", slog.String("error", err.Error()))
+		logger.Error("gagal terhubung ke PostgreSQL", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 	defer pool.Close()
+
+	mongoClient, err := database.NewMongoClient(context.Background())
+	if err != nil {
+		logger.Error("gagal terhubung ke MongoDB", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = mongoClient.Disconnect(ctx)
+	}()
+
+	mongoDB := mongoClient.Database(config.GetENV("MONGO_DATABASE", "praktikum-backend-mongo"))
+	_ = mongoDB
 
 	jwtManager := helper.NewJWTManager(
 		jwtSecret,
@@ -67,6 +81,7 @@ func main() {
 
 	app := config.NewApp(logger, pool, routes.Dependencies{
 		Pool:            pool,
+		Mongo:           mongoClient,
 		JWT:             jwtManager,
 		Permissions:     perms,
 		StudentService:  studentService,
