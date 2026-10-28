@@ -17,6 +17,7 @@ type CourseRepository interface {
 	FindAll(ctx context.Context) ([]model.Course, error)
 	FindByID(ctx context.Context, id int) (model.Course, error)
 	FindByStudent(ctx context.Context, userID int) ([]model.Course, error)
+	IsEnrolled(ctx context.Context, courseID, userID int) (bool, error)
 
 	LockStudent(ctx context.Context, userID int) error
 	LockCourses(ctx context.Context, ids ...int) error
@@ -100,6 +101,26 @@ func (r *coursePostgresRepository) FindByStudent(ctx context.Context, userID int
 		 JOIN enrollments e ON e.course_id = c.id
 		 WHERE e.user_id = $1
 		 ORDER BY c.code`, userID))
+}
+
+// IsEnrolled dipakai layanan lain, misalnya ulasan kelas di MongoDB,
+// yang perlu tahu apakah seorang user terdaftar di satu kelas.
+func (r *coursePostgresRepository) IsEnrolled(
+	ctx context.Context, courseID, userID int,
+) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM enrollments
+			WHERE course_id = $1 AND user_id = $2
+		)`,
+		courseID, userID,
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("memeriksa pendaftaran: %w", err)
+	}
+	return exists, nil
 }
 
 func (r *coursePostgresRepository) InsertEnrollment(ctx context.Context, courseID, userID int) error {
