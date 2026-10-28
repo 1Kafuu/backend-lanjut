@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"api-students/app/model"
@@ -35,6 +36,8 @@ type ReviewRepository interface {
 		req model.UpdateReviewRequest,
 	) (model.Review, error)
 	Delete(ctx context.Context, id string, userID int, anyOwner bool) error
+	AddReply(ctx context.Context, id string, reply model.Reply) (model.Review, error)
+	MarkHelpful(ctx context.Context, id string, userID int) (model.Review, error)
 }
 
 type reviewDocument struct {
@@ -313,4 +316,90 @@ func (r *reviewMongoRepository) Delete(
 		return r.whyNoMatch(ctx, oid)
 	}
 	return nil
+}
+
+func (r *reviewMongoRepository) AddReply(
+	ctx context.Context, id string, reply model.Reply,
+) (model.Review, error) {
+	oid, err := parseObjectID(id)
+	if err != nil {
+		return model.Review{}, err
+	}
+
+	doc := replyDocument{
+		ID:        bson.NewObjectID(),
+		UserID:    reply.UserID,
+		Username:  reply.Username,
+		Body:      reply.Body,
+		CreatedAt: now(),
+	}
+
+	limitField := "replies." + strconv.Itoa(MaxRepliesPerReview-1)
+	var updated reviewDocument
+	err = r.coll.FindOneAndUpdate(
+		ctx,
+		bson.M{
+			"_id":      oid,
+			limitField: bson.M{"$exists": false},
+		},
+		bson.M{"$push": bson.M{"replies": doc}},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&updated)
+	if err == nil {
+		return updated.toModel(), nil
+	}
+	if !errors.Is(err, mongo.ErrNoDocuments) {
+		return model.Review{}, fmt.Errorf("menambah balasan: %w", err)
+	}
+
+	count, err := r.coll.CountDocuments(ctx, bson.M{"_id": oid})
+	if err != nil {
+		return model.Review{}, fmt.Errorf("memeriksa ulasan: %w", err)
+	}
+	if count == 0 {
+		return model.Review{}, ErrNotFound
+	}
+	return model.Review{}, ErrReplyLimit
+}
+
+func (r *reviewMongoRepository) MarkHelpful(
+	ctx context.Context, id string, userID int,
+) (model.Review, error) {
+	oid, err := parseObjectID(id)
+	if err != nil {
+		return model.Review{}, err
+	}
+
+	var updated reviewDocument
+	err = r.coll.FindOneAndUpdate(
+		ctx,
+		bson.M{
+			"_id":        oid,
+			"user_id":    bson.M{"$ne": userID},
+			"helpful_by": bson.M{"$ne": userID},
+		},
+		bson.M{
+			"$addToSet": bson.M{"helpful_by": userID},
+			"$inc":      bson.M{"helpful_count": 1},
+		},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&updated)
+	if err == nil {
+		return updated.toModel(), nil
+	}
+	if !errors.Is(err, mongo.ErrNoDocuments) {
+		return model.Review{}, fmt.Errorf("menilai ulasan: %w", err)
+	}
+
+	var current reviewDocument
+	if err := r.coll.FindOne(ctx, bson.M{"_id": oid}).Decode(&current); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return model.Review{}, ErrNotFound
+		}
+		return model.Review{}, fmt.Errorf("memeriksa ulasan: %w", err)
+	}
+	if current.UserID == userID {
+		return model.Review{}, ErrOwnReview
+	}
+	return model.Review{}, ErrAlreadyVoted
 }
