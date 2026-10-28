@@ -83,18 +83,32 @@ func main() {
 		os.Exit(1)
 	}
 	reviewService := service.NewReviewService(reviewRepository, courseRepository, perms)
+	portfolioRepository := repository.NewPortfolioRepository(mongoDB)
+	if err := portfolioRepository.EnsureIndexes(context.Background()); err != nil {
+		logger.Error(
+			"gagal membuat index portofolio",
+			slog.String("error", err.Error()),
+		)
+		os.Exit(1)
+	}
+	portfolioService := service.NewPortfolioService(
+		portfolioRepository,
+		studentRepository,
+		perms,
+	)
 
 	app := config.NewApp(logger, pool, routes.Dependencies{
-		Pool:            pool,
-		Mongo:           mongoClient,
-		JWT:             jwtManager,
-		Permissions:     perms,
-		StudentService:  studentService,
-		PrestasiService: prestasiService,
-		UserService:     userService,
-		AuthService:     authService,
-		CourseService:   courseService,
-		ReviewService:   reviewService,
+		Pool:             pool,
+		Mongo:            mongoClient,
+		JWT:              jwtManager,
+		Permissions:      perms,
+		StudentService:   studentService,
+		PrestasiService:  prestasiService,
+		UserService:      userService,
+		AuthService:      authService,
+		CourseService:    courseService,
+		ReviewService:    reviewService,
+		PortfolioService: portfolioService,
 	})
 
 	port := config.GetENV("APP_PORT", "3000")

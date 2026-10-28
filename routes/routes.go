@@ -14,16 +14,17 @@ import (
 )
 
 type Dependencies struct {
-	Pool            *pgxpool.Pool
-	Mongo           *mongo.Client
-	JWT             *helper.JWTManager
-	Permissions     *helper.PermissionSet
-	StudentService  *service.StudentService
-	UserService     *service.UserService
-	PrestasiService *service.PrestasiService
-	AuthService     *service.AuthService
-	CourseService   *service.CourseService
-	ReviewService   *service.ReviewService
+	Pool             *pgxpool.Pool
+	Mongo            *mongo.Client
+	JWT              *helper.JWTManager
+	Permissions      *helper.PermissionSet
+	StudentService   *service.StudentService
+	UserService      *service.UserService
+	PrestasiService  *service.PrestasiService
+	AuthService      *service.AuthService
+	CourseService    *service.CourseService
+	ReviewService    *service.ReviewService
+	PortfolioService *service.PortfolioService
 }
 
 func Register(app *fiber.App, deps Dependencies) {
@@ -44,6 +45,17 @@ func Register(app *fiber.App, deps Dependencies) {
 	students.Get("/", middleware.RequirePermission(deps.Permissions, "student:list"), deps.StudentService.List)
 	students.Post("/", middleware.RequirePermission(deps.Permissions, "student:create"), deps.StudentService.Create)
 	students.Delete("/:id", middleware.RequirePermission(deps.Permissions, "student:delete"), deps.StudentService.Delete)
+
+	students.Get("/:id/portfolio", deps.PortfolioService.Get)
+	students.Put("/:id/portfolio", deps.PortfolioService.Upsert)
+	students.Post(
+		"/:id/portfolio/projects",
+		deps.PortfolioService.AddProject,
+	)
+	students.Delete(
+		"/:id/portfolio/projects/:projectId",
+		deps.PortfolioService.DeleteProject,
+	)
 
 	students.Get("/:id", deps.StudentService.Get)
 	students.Put("/:id", deps.StudentService.Replace)
@@ -84,6 +96,14 @@ func Register(app *fiber.App, deps Dependencies) {
 	reviews.Delete("/:id", deps.ReviewService.Delete)
 	reviews.Post("/:id/replies", deps.ReviewService.Reply)
 	reviews.Post("/:id/helpful", deps.ReviewService.MarkHelpful)
+
+	portfolios := api.Group("/portfolios",
+		middleware.RequireJSON,
+		middleware.RequireAuth(deps.JWT))
+	portfolios.Get(
+		"/stats/technologies",
+		deps.PortfolioService.TopTechnologies,
+	)
 
 	// pindah kelas
 	enrollments := api.Group("/enrollments",
