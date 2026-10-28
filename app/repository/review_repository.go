@@ -28,6 +28,13 @@ type ReviewRepository interface {
 	Create(ctx context.Context, review model.Review) (model.Review, error)
 	FindByID(ctx context.Context, id string) (model.Review, error)
 	FindByCourse(ctx context.Context, query model.ReviewQuery) ([]model.Review, error)
+	UpdateOwn(
+		ctx context.Context,
+		id string,
+		userID int,
+		req model.UpdateReviewRequest,
+	) (model.Review, error)
+	Delete(ctx context.Context, id string, userID int, anyOwner bool) error
 }
 
 type reviewDocument struct {
@@ -231,4 +238,79 @@ func (r *reviewMongoRepository) FindByCourse(
 		result = append(result, doc.toModel())
 	}
 	return result, nil
+}
+
+func (r *reviewMongoRepository) UpdateOwn(
+	ctx context.Context,
+	id string,
+	userID int,
+	req model.UpdateReviewRequest,
+) (model.Review, error) {
+	oid, err := parseObjectID(id)
+	if err != nil {
+		return model.Review{}, err
+	}
+
+	set := bson.M{"updated_at": now()}
+	if req.Rating != nil {
+		set["rating"] = *req.Rating
+	}
+	if req.Comment != nil {
+		set["comment"] = *req.Comment
+	}
+	if req.Tags != nil {
+		set["tags"] = *req.Tags
+	}
+
+	var doc reviewDocument
+	err = r.coll.FindOneAndUpdate(
+		ctx,
+		bson.M{"_id": oid, "user_id": userID},
+		bson.M{"$set": set},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&doc)
+	if err == nil {
+		return doc.toModel(), nil
+	}
+	if !errors.Is(err, mongo.ErrNoDocuments) {
+		return model.Review{}, fmt.Errorf("mengubah ulasan: %w", err)
+	}
+
+	return model.Review{}, r.whyNoMatch(ctx, oid)
+}
+
+func (r *reviewMongoRepository) whyNoMatch(
+	ctx context.Context, oid bson.ObjectID,
+) error {
+	count, err := r.coll.CountDocuments(ctx, bson.M{"_id": oid})
+	if err != nil {
+		return fmt.Errorf("memeriksa ulasan: %w", err)
+	}
+	if count == 0 {
+		return ErrNotFound
+	}
+	return ErrNotOwner
+}
+
+func (r *reviewMongoRepository) Delete(
+	ctx context.Context, id string, userID int, anyOwner bool,
+) error {
+	oid, err := parseObjectID(id)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{"_id": oid}
+	if !anyOwner {
+		filter["user_id"] = userID
+	}
+
+	result, err := r.coll.DeleteOne(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("menghapus ulasan: %w", err)
+	}
+	if result.DeletedCount == 0 {
+		return r.whyNoMatch(ctx, oid)
+	}
+	return nil
 }
