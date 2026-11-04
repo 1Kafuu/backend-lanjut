@@ -76,7 +76,8 @@ func main() {
 	authService := service.NewAuthService(userRepository, tokenRepository, jwtManager, perms, refreshTTL)
 	courseRepository := repository.NewCourseRepository(pool)
 	txManager := repository.NewTxManager(pool)
-	courseService := service.NewCourseService(courseRepository, txManager)
+	outboxRepository := repository.NewOutboxRepository(pool)
+	courseService := service.NewCourseService(courseRepository, outboxRepository, txManager)
 	reviewRepository := repository.NewReviewRepository(mongoDB)
 	if err := reviewRepository.EnsureIndexes(context.Background()); err != nil {
 		logger.Error("gagal membuat index MongoDB", slog.String("error", err.Error()))
