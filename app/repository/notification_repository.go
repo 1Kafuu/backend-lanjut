@@ -37,15 +37,18 @@ func (r *notificationPostgresRepository) WithTx(tx DBTX) NotificationRepository 
 // datang sebagai error 23505 yang membuat task di-retry padahal seharusnya
 // "sudah dikirim, lewati saja".
 //
-// Dengan ON CONFLICT, bila worker lain sedang memegang baris dengan outbox_id
-// yang sama tetapi belum commit, pernyataan ini MENUNGGU sampai worker itu
-// selesai, lalu melewatinya bila worker itu commit.
+// Dengan ON CONFLICT, bila worker lain sedang memegang baris dengan pasangan
+// (outbox_id, user_id) yang sama tetapi belum commit, pernyataan ini MENUNGGU
+// sampai worker itu selesai, lalu melewatinya bila worker itu commit.
+//
+// Kunci pasangannya penting: satu event boleh menjangkau banyak peserta,
+// jadi yang unik adalah event itu PLUS penerimanya, bukan event saja.
 func (r *notificationPostgresRepository) Claim(ctx context.Context, n model.Notification) (bool, error) {
 	var id int64
 	err := r.db.QueryRow(ctx, `
         INSERT INTO notifications (outbox_id, user_id, channel, subject, body)
         VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (outbox_id) DO NOTHING
+        ON CONFLICT (outbox_id, user_id) DO NOTHING
         RETURNING id`,
 		n.OutboxID, n.UserID, n.Channel, n.Subject, n.Body).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {

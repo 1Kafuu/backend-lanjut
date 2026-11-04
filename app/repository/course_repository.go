@@ -27,6 +27,9 @@ type CourseRepository interface {
 	InsertEnrollment(ctx context.Context, courseID, userID int) error
 	DeleteEnrollment(ctx context.Context, courseID, userID int) error
 	UpdateQuota(ctx context.Context, id, quota, version int) (model.Course, error)
+
+	// ListParticipantIDs mengembalikan id seluruh peserta kelas.
+	ListParticipantIDs(ctx context.Context, courseID int) ([]int, error)
 }
 
 const courseColumns = `id, code, name, credits, quota, enrolled_count, version, created_at`
@@ -261,4 +264,28 @@ func (r *coursePostgresRepository) UpdateQuota(ctx context.Context, id, quota, v
 		return model.Course{}, ErrVersionConflict
 	}
 	return model.Course{}, ErrQuotaBelowFilled
+}
+
+// ListParticipantIDs mengembalikan id peserta kelas, urut menaik.
+//
+// Dipakai saat kuota berubah. Daftar peserta diambil DALAM transaction
+// yang sama dengan perubahan kuota, sehingga penerima notifikasi sama
+// dengan keadaan kelas pada saat kuota berubah.
+func (r *coursePostgresRepository) ListParticipantIDs(ctx context.Context, courseID int) ([]int, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT user_id FROM enrollments WHERE course_id = $1 ORDER BY user_id`, courseID)
+	if err != nil {
+		return nil, fmt.Errorf("mengambil peserta kelas: %w", err)
+	}
+	defer rows.Close()
+
+	ids := []int{}
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("membaca peserta kelas: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
