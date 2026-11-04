@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"api-students/app/model"
+	"api-students/app/service"
 	"api-students/config"
 	"api-students/database"
 
@@ -46,26 +47,42 @@ func main() {
 		log.Fatalf("membaca outbox %d: %v", *outboxID, err)
 	}
 
-	body, err := json.Marshal(model.NotificationJob{
-		OutboxID: *outboxID, EventType: eventType, Payload: payload,
-	})
+	event := model.OutboxEvent{
+		ID: *outboxID, EventType: eventType, Payload: payload,
+	}
+	jobs, err := service.SplitEvent(event)
 	if err != nil {
-		log.Fatalf("mengemas job: %v", err)
+		log.Fatalf("memecah event %d: %v", *outboxID, err)
 	}
 
 	client := asynq.NewClient(config.RedisOpt())
 	defer client.Close()
 
-	for i := 0; i < *copies; i++ {
-		task := asynq.NewTask(model.TaskSendNotification, body,
-			asynq.TaskID(fmt.Sprintf("redeliver-%d-%d", *outboxID, i)),
-			asynq.Queue(model.QueueNotifications),
-			asynq.MaxRetry(5),
-			asynq.Timeout(30*time.Second),
-		)
-		if _, err := client.EnqueueContext(ctx, task); err != nil {
-			log.Fatalf("enqueue salinan %d: %v", i, err)
+	total := 0
+	for _, job := range jobs {
+		body, err := json.Marshal(job)
+		if err != nil {
+			log.Fatalf("mengemas job: %v", err)
+		}
+		for i := 0; i < *copies; i++ {
+			// TaskID berbeda untuk tiap salinan dan tiap peserta, sebab
+			// Redis menolak TaskID yang sama.
+			taskID := fmt.Sprintf("redeliver-%d-%d", *outboxID, i)
+			if job.UserID != 0 {
+				taskID = fmt.Sprintf("redeliver-%d-%d-%d", *outboxID, job.UserID, i)
+			}
+			task := asynq.NewTask(model.TaskSendNotification, body,
+				asynq.TaskID(taskID),
+				asynq.Queue(model.QueueNotifications),
+				asynq.MaxRetry(5),
+				asynq.Timeout(30*time.Second),
+			)
+			if _, err := client.EnqueueContext(ctx, task); err != nil {
+				log.Fatalf("enqueue salinan %d: %v", i, err)
+			}
+			total++
 		}
 	}
-	fmt.Printf("enqueue %d salinan task untuk outbox %d\n", *copies, *outboxID)
+	fmt.Printf("enqueue %d task untuk outbox %d (%d penerima x %d salinan)\n",
+		total, *outboxID, len(jobs), *copies)
 }
