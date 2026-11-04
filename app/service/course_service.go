@@ -284,10 +284,12 @@ func (s *CourseService) Swap(c *fiber.Ctx) error {
 	return helper.Success(c, fiber.StatusOK, "berhasil pindah kelas", joined)
 }
 
-// UpdateQuota mengubah kuota kelas dengan optimistic locking.
+// UpdateQuota mengubah kuota kelas lalu memberi tahu seluruh peserta.
 //
-// Dijaga middleware course:manage. Cukup satu pernyataan UPDATE, jadi tidak
-// perlu WithTx: pernyataan tunggal di PostgreSQL sudah atomik.
+// Dua pernyataan sekarang: UPDATE courses dan INSERT outbox. Keduanya
+// harus berhasil bersama, jadi keduanya berada dalam SATU transaction.
+// Bila INSERT outbox gagal, kuota juga dibatalkan, sehingga tidak pernah
+// ada kelas yang kuotanya berubah tanpa memberitahu peserta.
 func (s *CourseService) UpdateQuota(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -305,10 +307,36 @@ func (s *CourseService) UpdateQuota(c *fiber.Ctx) error {
 		return helper.Validation(errs)
 	}
 
-	updated, err := s.courses.UpdateQuota(ctx, id, req.Quota, req.Version)
+	var updated model.Course
+	err := s.tx.WithTx(ctx, func(tx repository.DBTX) error {
+		repo := s.courses.WithTx(tx)
+
+		course, err := repo.UpdateQuota(ctx, id, req.Quota, req.Version)
+		if err != nil {
+			return err
+		}
+
+		// Peserta diambil DALAM transaction yang sama, supaya daftar
+		// penerima sama dengan keadaan kelas saat kuota berubah.
+		participants, err := repo.ListParticipantIDs(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if err := s.outbox.WithTx(tx).Insert(ctx, model.EventCourseQuotaChanged, model.EnrollmentEvent{
+			CourseID: course.ID, CourseCode: course.Code, CourseName: course.Name,
+			NewQuota: course.Quota, UserIDs: participants,
+		}); err != nil {
+			return err
+		}
+
+		updated = course
+		return nil
+	})
 	if err != nil {
 		return translateCourseError(err)
 	}
+
 	return helper.Success(c, fiber.StatusOK, "kuota berhasil diubah", updated)
 }
 
