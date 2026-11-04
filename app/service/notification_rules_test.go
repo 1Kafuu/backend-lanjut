@@ -42,3 +42,22 @@ func TestBuildMessageEventTidakDikenal(t *testing.T) {
 		t.Fatalf("harus errUnknownEvent, dapat %v", err)
 	}
 }
+
+func TestBuildMessageEventKuota(t *testing.T) {
+	user := model.User{Username: "mhsuji", Email: "mhsuji@student.unair.ac.id"}
+	event := model.EnrollmentEvent{
+		CourseCode: "IF102", CourseName: "Basis Data Lanjut", NewQuota: 45,
+	}
+
+	msg, err := BuildMessage(model.EventCourseQuotaChanged, event, user)
+	if err != nil {
+		t.Fatalf("BuildMessage: %v", err)
+	}
+	want := "KRS: kuota IF102 Basis Data Lanjut berubah menjadi 45"
+	if msg.Subject != want {
+		t.Fatalf("subjek %q, harus %q", msg.Subject, want)
+	}
+	if msg.To != user.Email {
+		t.Fatalf("penerima %q, harus %q", msg.To, user.Email)
+	}
+}

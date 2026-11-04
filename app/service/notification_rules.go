@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"api-students/app/model"
 )
@@ -25,6 +26,11 @@ func BuildMessage(eventType string, e model.EnrollmentEvent, user model.User) (m
 		from := e.FromCourseCode + " " + e.FromCourseName
 		subject = "KRS: pindah dari " + from + " ke " + course
 		body = fmt.Sprintf("Halo %s, Anda telah pindah dari kelas %s ke kelas %s.", user.Username, from, course)
+	case model.EventCourseQuotaChanged:
+		subject = "KRS: kuota " + course + " berubah menjadi " + strconv.Itoa(e.NewQuota)
+		body = fmt.Sprintf(
+			"Halo %s, kuota kelas %s berubah menjadi %d. Bila kelas penuh, Anda tidak dapat mendaftar.",
+			user.Username, course, e.NewQuota)
 	default:
 		return model.Message{}, fmt.Errorf("%w: %q", errUnknownEvent, eventType)
 	}

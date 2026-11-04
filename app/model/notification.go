@@ -7,9 +7,10 @@ import (
 
 // Nama event KRS yang dicatat ke outbox.
 const (
-	EventEnrollmentCreated = "enrollment.created"
-	EventEnrollmentDropped = "enrollment.dropped"
-	EventEnrollmentSwapped = "enrollment.swapped"
+	EventEnrollmentCreated  = "enrollment.created"
+	EventEnrollmentDropped  = "enrollment.dropped"
+	EventEnrollmentSwapped  = "enrollment.swapped"
+	EventCourseQuotaChanged = "course.quota_changed"
 )
 
 // TaskSendNotification = nama jenis task, QueueNotifications = nama queue.
@@ -26,6 +27,13 @@ type EnrollmentEvent struct {
 	CourseName     string `json:"course_name"`
 	FromCourseCode string `json:"from_course_code,omitempty"`
 	FromCourseName string `json:"from_course_name,omitempty"`
+
+	// NewQuota dipakai event course.quota_changed.
+	NewQuota int `json:"new_quota,omitempty"`
+
+	// UserIDs dipakai event course.quota_changed: seluruh peserta kelas
+	// saat kuota berubah. Relay memecahnya jadi satu task per peserta.
+	UserIDs []int `json:"user_ids,omitempty"`
 }
 
 // OutboxEvent adalah satu baris tabel outbox.
@@ -40,6 +48,7 @@ type OutboxEvent struct {
 type NotificationJob struct {
 	OutboxID  int64           `json:"outbox_id"`
 	EventType string          `json:"event_type"`
+	UserID    int             `json:"user_id,omitempty"`
 	Payload   json.RawMessage `json:"payload"`
 }
 
