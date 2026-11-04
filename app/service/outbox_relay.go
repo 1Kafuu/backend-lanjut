@@ -117,35 +117,84 @@ func (r *OutboxRelay) RelayOnce(ctx context.Context) (int, error) {
 	return published, enqueueErr
 }
 
-// publish meng-enqueue satu event sebagai task notifikasi.
-func (r *OutboxRelay) publish(ctx context.Context, e model.OutboxEvent) error {
-	job := model.NotificationJob{
-		OutboxID: e.ID, EventType: e.EventType, Payload: e.Payload,
-	}
-	// Payload task harus []byte, jadi struct di-marshal menjadi JSON dulu.
-	payload, err := json.Marshal(job)
-	if err != nil {
-		return fmt.Errorf("mengemas job outbox %d: %w", e.ID, err)
+// SplitEvent memecah satu event outbox menjadi daftar job notifikasi.
+//
+// Event KRS biasa menjangkau satu mahasiswa, jadi hasilnya satu job.
+// Event course.quota_changed menjangkau seluruh peserta kelas, jadi
+// hasilnya satu job per peserta. Karena itu email ke-7 yang gagal hanya
+// me-retry task peserta ke-7, bukan mengulang email peserta ke-1..ke-6.
+func SplitEvent(e model.OutboxEvent) ([]model.NotificationJob, error) {
+	if e.EventType != model.EventCourseQuotaChanged {
+		return []model.NotificationJob{{
+			OutboxID: e.ID, EventType: e.EventType, Payload: e.Payload,
+		}}, nil
 	}
 
-	task := asynq.NewTask(model.TaskSendNotification, payload,
-		// TaskID dari id outbox: enqueue ulang event yang sama ditolak Redis.
-		// Ini menutup celah relay mati SETELAH enqueue tetapi SEBELUM commit.
-		asynq.TaskID(fmt.Sprintf("outbox-%d", e.ID)),
-		asynq.Queue(model.QueueNotifications),
-		asynq.MaxRetry(5),
-		asynq.Timeout(30*time.Second),
-		// Task yang selesai disimpan 24 jam, sehingga TaskID tetap tercatat
-		// dan perlindungan di atas tetap berlaku.
-		asynq.Retention(24*time.Hour),
-	)
-	if _, err := r.queue.EnqueueContext(ctx, task); err != nil {
-		if errors.Is(err, asynq.ErrTaskIDConflict) {
-			// Sudah pernah di-enqueue pada putaran sebelumnya. Bagi relay
-			// itu sama dengan berhasil.
-			return nil
+	var ev model.EnrollmentEvent
+	if err := json.Unmarshal(e.Payload, &ev); err != nil {
+		return nil, fmt.Errorf("mengurai event kuota %d: %w", e.ID, err)
+	}
+
+	jobs := make([]model.NotificationJob, 0, len(ev.UserIDs))
+	for _, uid := range ev.UserIDs {
+		one := ev
+		one.UserID = uid
+		one.UserIDs = nil
+		payload, err := json.Marshal(one)
+		if err != nil {
+			return nil, fmt.Errorf("mengemas event kuota %d: %w", e.ID, err)
 		}
-		return fmt.Errorf("enqueue outbox %d: %w", e.ID, err)
+		jobs = append(jobs, model.NotificationJob{
+			OutboxID: e.ID, EventType: e.EventType, UserID: uid, Payload: payload,
+		})
+	}
+	return jobs, nil
+}
+
+// taskID menyusun TaskID task dari id outbox dan penerima.
+//
+// TaskID dari id outbox: enqueue ulang event yang sama ditolak Redis.
+// Ini menutup celah relay mati SETELAH enqueue tetapi SEBELUM commit.
+// Event kuota memakai satu TaskID per peserta.
+func taskID(outboxID int64, userID int) string {
+	if userID != 0 {
+		return fmt.Sprintf("outbox-%d-%d", outboxID, userID)
+	}
+	return fmt.Sprintf("outbox-%d", outboxID)
+}
+
+// publish meng-enqueue satu event sebagai task notifikasi. Event yang
+// menjangkau banyak peserta dipecah jadi satu task per peserta.
+func (r *OutboxRelay) publish(ctx context.Context, e model.OutboxEvent) error {
+	jobs, err := SplitEvent(e)
+	if err != nil {
+		return err
+	}
+
+	for _, job := range jobs {
+		// Payload task harus []byte, jadi struct di-marshal menjadi JSON dulu.
+		payload, err := json.Marshal(job)
+		if err != nil {
+			return fmt.Errorf("mengemas job outbox %d: %w", e.ID, err)
+		}
+
+		task := asynq.NewTask(model.TaskSendNotification, payload,
+			asynq.TaskID(taskID(e.ID, job.UserID)),
+			asynq.Queue(model.QueueNotifications),
+			asynq.MaxRetry(5),
+			asynq.Timeout(30*time.Second),
+			// Task yang selesai disimpan 24 jam, sehingga TaskID tetap tercatat
+			// dan perlindungan di atas tetap berlaku.
+			asynq.Retention(24*time.Hour),
+		)
+		if _, err := r.queue.EnqueueContext(ctx, task); err != nil {
+			if errors.Is(err, asynq.ErrTaskIDConflict) {
+				// Sudah pernah di-enqueue pada putaran sebelumnya. Bagi relay
+				// itu sama dengan berhasil.
+				continue
+			}
+			return fmt.Errorf("enqueue outbox %d: %w", e.ID, err)
+		}
 	}
 	return nil
 }
