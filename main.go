@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -14,6 +15,10 @@ import (
 	"api-students/database"
 	"api-students/helper"
 	"api-students/routes"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/hibiken/asynq"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const minSecretLength = 32
@@ -22,11 +27,16 @@ func main() {
 	config.LoadENV()
 	logger := config.NewLogger()
 
-	jwtSecret := config.GetENV("JWT_SECRET", "")
-	if len(jwtSecret) < minSecretLength {
-		logger.Error("JWT_SECRET tidak diisi atau terlalu pendek",
-			slog.Int("minimal_karakter", minSecretLength),
-			slog.Int("dapat", len(jwtSecret)))
+	// Satu program, tiga cara menjalankan:
+	//   go run . -role=api     hanya melayani HTTP
+	//   go run . -role=worker  hanya relay outbox dan worker queue
+	//   go run . -role=all     keduanya dalam satu proses
+	role := flag.String("role", config.GetENV("APP_ROLE", "all"), "api | worker | all")
+	flag.Parse()
+	runAPI := *role == "api" || *role == "all"
+	runWorker := *role == "worker" || *role == "all"
+	if !runAPI && !runWorker {
+		logger.Error("role tidak dikenal", slog.String("role", *role))
 		os.Exit(1)
 	}
 
@@ -37,17 +47,55 @@ func main() {
 	}
 	defer pool.Close()
 
+	// ctx dibatalkan ketika Ctrl+C ditekan atau sistem mengirim SIGTERM.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	var app *fiber.App
+	if runAPI {
+		app = startAPI(logger, pool)
+		if app == nil {
+			os.Exit(1)
+		}
+	}
+
+	var stopWorker func()
+	if runWorker {
+		stopWorker = startWorker(ctx, logger, pool)
+		if stopWorker == nil {
+			os.Exit(1)
+		}
+	}
+
+	logger.Info("aplikasi berjalan", slog.String("role", *role))
+	<-ctx.Done()
+
+	// Urutan berhenti: pintu masuk HTTP ditutup lebih dulu, baru pekerja.
+	if app != nil {
+		if err := app.ShutdownWithTimeout(10 * time.Second); err != nil {
+			logger.Error("shutdown HTTP tidak rapi", slog.String("error", err.Error()))
+		}
+	}
+	if stopWorker != nil {
+		stopWorker()
+	}
+	logger.Info("aplikasi berhenti dengan rapi")
+}
+
+// startAPI menyiapkan seluruh kebutuhan HTTP. Mengembalikan nil bila gagal.
+func startAPI(logger *slog.Logger, pool *pgxpool.Pool) *fiber.App {
+	jwtSecret := config.GetENV("JWT_SECRET", "")
+	if len(jwtSecret) < minSecretLength {
+		logger.Error("JWT_SECRET tidak diisi atau terlalu pendek",
+			slog.Int("minimal_karakter", minSecretLength))
+		return nil
+	}
+
 	mongoClient, err := database.NewMongoClient(context.Background())
 	if err != nil {
 		logger.Error("gagal terhubung ke MongoDB", slog.String("error", err.Error()))
-		os.Exit(1)
+		return nil
 	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = mongoClient.Disconnect(ctx)
-	}()
-
 	mongoDB := mongoClient.Database(config.GetENV("MONGO_DATABASE", "praktikum-backend-mongo"))
 
 	jwtManager := helper.NewJWTManager(
@@ -64,7 +112,7 @@ func main() {
 	rawPermissions, err := roleRepository.LoadPermissions(context.Background())
 	if err != nil {
 		logger.Error("gagal memuat permission", slog.String("error", err.Error()))
-		os.Exit(1)
+		return nil
 	}
 	perms := helper.NewPermissionSet(rawPermissions)
 	logger.Info("permission dimuat", slog.Any("roles", perms.KnownRoles()))
@@ -81,7 +129,7 @@ func main() {
 	reviewRepository := repository.NewReviewRepository(mongoDB)
 	if err := reviewRepository.EnsureIndexes(context.Background()); err != nil {
 		logger.Error("gagal membuat index MongoDB", slog.String("error", err.Error()))
-		os.Exit(1)
+		return nil
 	}
 	reviewService := service.NewReviewService(reviewRepository, courseRepository, perms)
 	portfolioRepository := repository.NewPortfolioRepository(mongoDB)
@@ -90,13 +138,18 @@ func main() {
 			"gagal membuat index portofolio",
 			slog.String("error", err.Error()),
 		)
-		os.Exit(1)
+		return nil
 	}
 	portfolioService := service.NewPortfolioService(
 		portfolioRepository,
 		studentRepository,
 		perms,
 	)
+
+	// Inspector hanya MEMBACA keadaan queue untuk endpoint admin. Ia tidak
+	// menghubungi Redis saat dibuat, sehingga API tetap daftar walaupun
+	// Redis sedang mati.
+	inspector := asynq.NewInspector(config.RedisOpt())
 
 	app := config.NewApp(logger, pool, routes.Dependencies{
 		Pool:             pool,
@@ -110,28 +163,28 @@ func main() {
 		CourseService:    courseService,
 		ReviewService:    reviewService,
 		PortfolioService: portfolioService,
+		NotificationService: service.NewNotificationService(
+			repository.NewNotificationRepository(pool),
+			outboxRepository,
+			inspector,
+		),
+	})
+
+	// Sumber daya milik API ditutup setelah server HTTP berhenti.
+	app.Hooks().OnShutdown(func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = inspector.Close()
+		return mongoClient.Disconnect(ctx)
 	})
 
 	port := config.GetENV("APP_PORT", "3000")
-
 	go func() {
 		if err := app.Listen(":" + port); err != nil {
 			logger.Error("server berhenti", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
 	}()
-
-	logger.Info("server berjalan", slog.String("port", port))
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	logger.Info("sinyal berhenti diterima, menutup server")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := app.ShutdownWithContext(ctx); err != nil {
-		logger.Error("gagal menutup server dengan rapi", slog.String("error", err.Error()))
-	}
-	logger.Info("server berhenti dengan rapi")
+	logger.Info("HTTP berjalan", slog.String("port", port))
+	return app
 }

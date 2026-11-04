@@ -25,6 +25,8 @@ type Dependencies struct {
 	CourseService    *service.CourseService
 	ReviewService    *service.ReviewService
 	PortfolioService *service.PortfolioService
+
+	NotificationService *service.NotificationService
 }
 
 func Register(app *fiber.App, deps Dependencies) {
@@ -111,6 +113,19 @@ func Register(app *fiber.App, deps Dependencies) {
 		middleware.RequireAuth(deps.JWT))
 
 	enrollments.Post("/swap", deps.CourseService.Swap)
+
+	// --- notifikasi (diisi oleh worker, dibaca lewat API) ---
+	notifications := api.Group("/notifications",
+		middleware.RequireJSON,
+		middleware.RequireAuth(deps.JWT))
+	notifications.Get("/mine", deps.NotificationService.Mine)
+
+	admin := api.Group("/admin",
+		middleware.RequireJSON,
+		middleware.RequireAuth(deps.JWT))
+	admin.Get("/queue",
+		middleware.RequirePermission(deps.Permissions, "queue:monitor"),
+		deps.NotificationService.Monitor)
 }
 
 func healthCheck(pool *pgxpool.Pool, mongoClient *mongo.Client) fiber.Handler {
