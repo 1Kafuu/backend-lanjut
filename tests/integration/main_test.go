@@ -6,16 +6,20 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 var pool *pgxpool.Pool
 
 func TestMain(m *testing.M) {
+	_ = godotenv.Load(filepath.Join("..", "..", ".env.test"))
+
 	dsn := os.Getenv("TEST_DATABASE_URL")
 
 	if dsn == "" {
