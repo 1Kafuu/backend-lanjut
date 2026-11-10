@@ -19,6 +19,21 @@ func NewUserService(repo repository.UserRepository, perms *helper.PermissionSet)
 	return &UserService{repo: repo, perms: perms}
 }
 
+// List godoc
+//
+// @Summary      Daftar user dengan paginasi cursor
+// @Description  Mendukung ?search=, ?is_active=, ?limit=, dan ?after=.
+// @Tags         users
+// @Produce      json
+// @Security     BearerAuth
+// @Param        search    query  string  false  "Cari username atau email"
+// @Param        is_active query  bool    false  "Saring status aktif"
+// @Param        limit     query  int     false  "Jumlah data per halaman"
+// @Param        after     query  string  false  "Cursor halaman sebelumnya"
+// @Success      200       {object}  model.UserCursorPage
+// @Failure      401       {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Failure      403       {object}  model.ErrorResponse  "Tidak memiliki hak user:list"
+// @Router       /users [get]
 func (s *UserService) List(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -54,9 +69,26 @@ func (s *UserService) List(c *fiber.Ctx) error {
 	if format == helper.FormatCSV {
 		return helper.WriteUsersCSV(c, rows)
 	}
-	return helper.SuccessCursor(c, "daftar user berhasil diambil", rows, meta)
+	return c.Status(fiber.StatusOK).JSON(model.UserCursorPage{
+		Success: true,
+		Message: "daftar user berhasil diambil",
+		Data:    rows,
+		Meta:    *meta,
+	})
 }
 
+// Get godoc
+//
+// @Summary      Detail satu user
+// @Tags         users
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "ID user"
+// @Success      200  {object}  model.WebResponse{data=model.User}
+// @Failure      400  {object}  model.ErrorResponse  "ID bukan angka positif"
+// @Failure      403  {object}  model.ErrorResponse  "Tidak berhak mengakses data user lain"
+// @Failure      404  {object}  model.ErrorResponse  "User tidak ditemukan"
+// @Router       /users/{id} [get]
 func (s *UserService) Get(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -78,6 +110,21 @@ func (s *UserService) Get(c *fiber.Ctx) error {
 	return helper.Success(c, fiber.StatusOK, "user ditemukan", user)
 }
 
+// Replace godoc
+//
+// @Summary      Mengganti data user
+// @Description  Semua field wajib diisi; field yang tidak dikirim menjadi kosong.
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id    path  int                       true  "ID user"
+// @Param        body  body  model.ReplaceUserRequest  true  "Data user baru"
+// @Success      200   {object}  model.WebResponse{data=model.User}
+// @Failure      400   {object}  model.ErrorResponse  "Body bukan JSON yang valid"
+// @Failure      403   {object}  model.ErrorResponse  "Tidak berhak mengubah user lain"
+// @Failure      422   {object}  model.ErrorResponse  "Validasi gagal"
+// @Router       /users/{id} [put]
 func (s *UserService) Replace(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -109,6 +156,21 @@ func (s *UserService) Replace(c *fiber.Ctx) error {
 	return helper.Success(c, fiber.StatusOK, "user berhasil diperbarui", updated)
 }
 
+// Patch godoc
+//
+// @Summary      Mengubah sebagian data user
+// @Description  Hanya field yang dikirim yang diubah.
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id    path  int                    true  "ID user"
+// @Param        body  body  model.PatchUserRequest  true  "Field yang diubah"
+// @Success      200   {object}  model.WebResponse{data=model.User}
+// @Failure      400   {object}  model.ErrorResponse  "Body bukan JSON yang valid"
+// @Failure      403   {object}  model.ErrorResponse  "Tidak berhak mengubah user lain"
+// @Failure      422   {object}  model.ErrorResponse  "Validasi gagal"
+// @Router       /users/{id} [patch]
 func (s *UserService) Patch(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -147,6 +209,19 @@ func (s *UserService) Patch(c *fiber.Ctx) error {
 	return helper.Success(c, fiber.StatusOK, "user berhasil diperbarui", updated)
 }
 
+// Delete godoc
+//
+// @Summary      Menghapus user
+// @Description  Soft delete: akun dinonaktifkan, bukan dihapus permanen.
+// @Tags         users
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "ID user"
+// @Success      204  "User dinonaktifkan"
+// @Failure      401  {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Failure      403  {object}  model.ErrorResponse  "Tidak berhak menghapus user lain"
+// @Failure      404  {object}  model.ErrorResponse  "User tidak ditemukan"
+// @Router       /users/{id} [delete]
 func (s *UserService) Delete(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -170,6 +245,21 @@ func (s *UserService) Delete(c *fiber.Ctx) error {
 	return helper.NoContent(c)
 }
 
+// AssignRole godoc
+//
+// @Summary      Mengganti role user
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id    path  int                      true  "ID user"
+// @Param        body  body  model.AssignRoleRequest  true  "Role baru"
+// @Success      200   {object}  model.WebResponse{data=model.User}
+// @Failure      400   {object}  model.ErrorResponse  "Body bukan JSON yang valid"
+// @Failure      403   {object}  model.ErrorResponse  "Tidak memiliki hak role:assign"
+// @Failure      404   {object}  model.ErrorResponse  "User tidak ditemukan"
+// @Failure      422   {object}  model.ErrorResponse  "Role tidak dikenal"
+// @Router       /users/{id}/role [patch]
 func (s *UserService) AssignRole(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()

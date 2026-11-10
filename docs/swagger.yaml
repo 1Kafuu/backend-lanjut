@@ -1,5 +1,60 @@
 basePath: /api/v1
 definitions:
+  model.AddProjectRequest:
+    properties:
+      link:
+        type: string
+      technologies:
+        items:
+          type: string
+        maxItems: 10
+        type: array
+      title:
+        maxLength: 120
+        minLength: 3
+        type: string
+      year:
+        maximum: 2100
+        minimum: 1900
+        type: integer
+    required:
+    - technologies
+    - title
+    - year
+    type: object
+  model.AssignRoleRequest:
+    properties:
+      role:
+        type: string
+    type: object
+  model.Certificate:
+    properties:
+      id:
+        type: string
+      issued_at:
+        type: string
+      issuer:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CertificateRequest:
+    properties:
+      issued_at:
+        type: string
+      issuer:
+        maxLength: 120
+        minLength: 2
+        type: string
+      name:
+        maxLength: 120
+        minLength: 3
+        type: string
+    required:
+    - issued_at
+    - issuer
+    - name
+    type: object
   model.Course:
     properties:
       code:
@@ -37,6 +92,29 @@ definitions:
     required:
     - comment
     - rating
+    type: object
+  model.CreateStudentRequest:
+    properties:
+      grade:
+        maximum: 4
+        minimum: 0
+        type: number
+      name:
+        type: string
+      nim:
+        type: integer
+    required:
+    - name
+    - nim
+    type: object
+  model.CursorMeta:
+    properties:
+      has_more:
+        type: boolean
+      limit:
+        type: integer
+      next_cursor:
+        type: string
     type: object
   model.ErrorResponse:
     properties:
@@ -82,6 +160,15 @@ definitions:
       total_credits:
         type: integer
     type: object
+  model.MyProfile:
+    properties:
+      permissions:
+        items:
+          type: string
+        type: array
+      user:
+        $ref: '#/definitions/model.User'
+    type: object
   model.Notification:
     properties:
       body:
@@ -98,6 +185,104 @@ definitions:
         type: string
       user_id:
         type: integer
+    type: object
+  model.PatchStudentRequest:
+    properties:
+      grade:
+        maximum: 4
+        minimum: 0
+        type: number
+      is_active:
+        type: boolean
+      name:
+        maxLength: 120
+        minLength: 1
+        type: string
+      nim:
+        type: integer
+    type: object
+  model.PatchUserRequest:
+    properties:
+      email:
+        maxLength: 120
+        type: string
+      is_active:
+        type: boolean
+      username:
+        maxLength: 30
+        minLength: 3
+        type: string
+    type: object
+  model.Portfolio:
+    properties:
+      bio:
+        type: string
+      certificates:
+        items:
+          $ref: '#/definitions/model.Certificate'
+        type: array
+      created_at:
+        type: string
+      headline:
+        type: string
+      projects:
+        items:
+          $ref: '#/definitions/model.Project'
+        type: array
+      student_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  model.Prestasi:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      juara:
+        type: string
+      nama_prestasi:
+        type: string
+      student_id:
+        type: integer
+    type: object
+  model.Project:
+    properties:
+      id:
+        type: string
+      link:
+        type: string
+      technologies:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      year:
+        type: integer
+    type: object
+  model.ProjectRequest:
+    properties:
+      link:
+        type: string
+      technologies:
+        items:
+          type: string
+        maxItems: 10
+        type: array
+      title:
+        maxLength: 120
+        minLength: 3
+        type: string
+      year:
+        maximum: 2100
+        minimum: 1900
+        type: integer
+    required:
+    - technologies
+    - title
+    - year
     type: object
   model.QueueInfo:
     properties:
@@ -157,6 +342,40 @@ definitions:
     - password
     - username
     type: object
+  model.ReplaceStudentRequest:
+    properties:
+      grade:
+        maximum: 4
+        minimum: 0
+        type: number
+      is_active:
+        type: boolean
+      name:
+        maxLength: 120
+        type: string
+      nim:
+        type: integer
+    required:
+    - grade
+    - is_active
+    - name
+    - nim
+    type: object
+  model.ReplaceUserRequest:
+    properties:
+      email:
+        maxLength: 120
+        type: string
+      is_active:
+        type: boolean
+      username:
+        maxLength: 30
+        minLength: 3
+        type: string
+    required:
+    - email
+    - username
+    type: object
   model.Reply:
     properties:
       body:
@@ -169,6 +388,15 @@ definitions:
         type: integer
       username:
         type: string
+    type: object
+  model.ReplyRequest:
+    properties:
+      body:
+        maxLength: 500
+        minLength: 2
+        type: string
+    required:
+    - body
     type: object
   model.Review:
     properties:
@@ -221,6 +449,40 @@ definitions:
       next_before:
         type: string
     type: object
+  model.ReviewSummary:
+    properties:
+      average_rating:
+        type: number
+      count:
+        type: integer
+      course_id:
+        type: integer
+      distribution:
+        additionalProperties:
+          type: integer
+        type: object
+      top_tags:
+        items:
+          $ref: '#/definitions/model.TagCount'
+        type: array
+    type: object
+  model.Student:
+    properties:
+      created_at:
+        type: string
+      grade:
+        type: number
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
+      nim:
+        type: integer
+      owner_id:
+        type: integer
+    type: object
   model.SwapRequest:
     properties:
       from_course_id:
@@ -232,6 +494,20 @@ definitions:
     required:
     - from_course_id
     - to_course_id
+    type: object
+  model.TagCount:
+    properties:
+      tag:
+        type: string
+      total:
+        type: integer
+    type: object
+  model.TechnologyCount:
+    properties:
+      technology:
+        type: string
+      total:
+        type: integer
     type: object
   model.TokenPair:
     properties:
@@ -245,6 +521,57 @@ definitions:
       token_type:
         description: '"Bearer"'
         type: string
+    type: object
+  model.UpdateQuotaRequest:
+    properties:
+      quota:
+        maximum: 500
+        minimum: 1
+        type: integer
+      version:
+        minimum: 1
+        type: integer
+    required:
+    - quota
+    - version
+    type: object
+  model.UpdateReviewRequest:
+    properties:
+      comment:
+        maxLength: 1000
+        minLength: 10
+        type: string
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+      tags:
+        items:
+          type: string
+        maxItems: 5
+        type: array
+    type: object
+  model.UpsertPortfolioRequest:
+    properties:
+      bio:
+        maxLength: 2000
+        type: string
+      certificates:
+        items:
+          $ref: '#/definitions/model.CertificateRequest'
+        maxItems: 20
+        type: array
+      headline:
+        maxLength: 120
+        minLength: 3
+        type: string
+      projects:
+        items:
+          $ref: '#/definitions/model.ProjectRequest'
+        maxItems: 20
+        type: array
+    required:
+    - headline
     type: object
   model.User:
     properties:
@@ -260,6 +587,19 @@ definitions:
         type: string
       username:
         type: string
+    type: object
+  model.UserCursorPage:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/model.User'
+        type: array
+      message:
+        type: string
+      meta:
+        $ref: '#/definitions/model.CursorMeta'
+      success:
+        type: boolean
     type: object
   model.WebResponse:
     properties:
@@ -341,6 +681,56 @@ paths:
           schema:
             $ref: '#/definitions/model.ErrorResponse'
       summary: Login dan mendapatkan pasangan token
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: 'Idempoten: mencabut refresh token yang tidak ada tetap dianggap
+        berhasil.'
+      parameters:
+      - description: Refresh token yang dicabut
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/model.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "400":
+          description: Body bukan JSON yang valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Keluar dan mencabut refresh token
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Data akun dan daftar permission sesuai role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MyProfile'
+              type: object
+        "401":
+          description: Belum terautentikasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Profil saya
       tags:
       - auth
   /auth/refresh:
@@ -471,6 +861,60 @@ paths:
       security:
       - BearerAuth: []
       summary: Detail satu kelas
+      tags:
+      - courses
+    patch:
+      consumes:
+      - application/json
+      description: 'Optimistic locking: kirim version yang terakhir dilihat. Membutuhkan
+        permission course:manage.'
+      parameters:
+      - description: ID kelas
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Kuota baru dan version
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateQuotaRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Course'
+              type: object
+        "400":
+          description: Body bukan JSON yang valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak memiliki hak course:manage
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Kelas tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "409":
+          description: VERSION_CONFLICT atau QUOTA_BELOW_ENROLLED
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Validasi gagal
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mengubah kuota kelas (admin)
       tags:
       - courses
   /courses/{id}/enroll:
@@ -636,6 +1080,40 @@ paths:
       summary: Membuat ulasan untuk sebuah kelas
       tags:
       - reviews
+  /courses/{id}/reviews/summary:
+    get:
+      description: Jumlah ulasan, rata-rata rating, sebaran rating, dan tag terpopuler.
+      parameters:
+      - description: ID kelas
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ReviewSummary'
+              type: object
+        "400":
+          description: ID bukan angka positif
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Kelas tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Ringkasan ulasan sebuah kelas
+      tags:
+      - reviews
   /courses/mine:
     get:
       description: Daftar kelas yang diikuti mahasiswa beserta total SKS.
@@ -728,6 +1206,1017 @@ paths:
       summary: Notifikasi saya
       tags:
       - notifications
+  /portfolios/stats/technologies:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.TechnologyCount'
+                  type: array
+              type: object
+        "401":
+          description: Belum terautentikasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Teknologi terpopuler di seluruh portofolio
+      tags:
+      - portfolio
+  /prestasi:
+    get:
+      description: Mendukung paginasi, pencarian, dan pengurutan.
+      parameters:
+      - default: 1
+        description: Nomor halaman
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Jumlah data per halaman
+        in: query
+        name: limit
+        type: integer
+      - description: Cari nama prestasi
+        in: query
+        name: search
+        type: string
+      - description: Arah pengurutan
+        enum:
+        - asc
+        - desc
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Prestasi'
+                  type: array
+              type: object
+        "401":
+          description: Belum terautentikasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Daftar prestasi mahasiswa
+      tags:
+      - prestasi
+  /prestasi/{id}:
+    get:
+      parameters:
+      - description: ID prestasi
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Prestasi'
+              type: object
+        "400":
+          description: ID bukan angka positif
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Prestasi tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Detail satu prestasi
+      tags:
+      - prestasi
+  /reviews/{id}:
+    delete:
+      description: Pemilik boleh menghapus ulasan sendiri; admin dengan hak review:moderate
+        boleh menghapus ulasan siapa pun.
+      parameters:
+      - description: ID ulasan
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Ulasan dihapus
+        "401":
+          description: Belum terautentikasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Bukan pemilik ulasan dan tidak punya hak moderasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Ulasan tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Menghapus ulasan
+      tags:
+      - reviews
+    get:
+      parameters:
+      - description: ID ulasan
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Review'
+              type: object
+        "400":
+          description: ID ulasan tidak valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Ulasan tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Detail satu ulasan
+      tags:
+      - reviews
+    patch:
+      consumes:
+      - application/json
+      description: Hanya pemilik ulasan yang boleh mengubah; minimal satu field harus
+        diisi.
+      parameters:
+      - description: ID ulasan
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Field yang diubah
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Review'
+              type: object
+        "400":
+          description: Body bukan JSON yang valid atau tidak ada field yang diubah
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "401":
+          description: Belum terautentikasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Bukan pemilik ulasan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Ulasan tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Validasi gagal
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mengubah ulasan sendiri
+      tags:
+      - reviews
+  /reviews/{id}/helpful:
+    post:
+      description: Satu orang hanya dapat menandai satu kali.
+      parameters:
+      - description: ID ulasan
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Review'
+              type: object
+        "401":
+          description: Belum terautentikasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Ulasan tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "409":
+          description: ALREADY_VOTED
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Menandai ulasan sebagai membantu
+      tags:
+      - reviews
+  /reviews/{id}/replies:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID ulasan
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Isi balasan
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ReplyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Review'
+              type: object
+        "400":
+          description: Body bukan JSON yang valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "401":
+          description: Belum terautentikasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Ulasan tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Validasi gagal
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Menambahkan balasan pada ulasan
+      tags:
+      - reviews
+  /students:
+    get:
+      description: Mendukung paginasi, pencarian, pengurutan, dan penyaringan.
+      parameters:
+      - default: 1
+        description: Nomor halaman
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Jumlah data per halaman
+        in: query
+        name: limit
+        type: integer
+      - description: Cari nama atau NIM
+        in: query
+        name: search
+        type: string
+      - default: id
+        description: Kolom pengurutan
+        in: query
+        name: sort
+        type: string
+      - description: Arah pengurutan
+        enum:
+        - asc
+        - desc
+        in: query
+        name: order
+        type: string
+      - description: Saring status aktif
+        in: query
+        name: is_active
+        type: boolean
+      - description: Nilai minimum
+        in: query
+        name: min_grade
+        type: number
+      - description: Nilai maksimum
+        in: query
+        name: max_grade
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Student'
+                  type: array
+              type: object
+        "401":
+          description: Belum terautentikasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak memiliki hak student:list
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Daftar mahasiswa
+      tags:
+      - students
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Data mahasiswa
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateStudentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Student'
+              type: object
+        "400":
+          description: Body bukan JSON yang valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak memiliki hak student:create
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "409":
+          description: NIM sudah dipakai
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Validasi gagal
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Membuat mahasiswa baru
+      tags:
+      - students
+  /students/{id}:
+    delete:
+      parameters:
+      - description: ID mahasiswa
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Mahasiswa dihapus
+        "400":
+          description: ID bukan angka positif
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "401":
+          description: Belum terautentikasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak memiliki hak student:delete
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Mahasiswa tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Menghapus mahasiswa
+      tags:
+      - students
+    get:
+      parameters:
+      - description: ID mahasiswa
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Student'
+              type: object
+        "400":
+          description: ID bukan angka positif
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak berhak mengakses data mahasiswa lain
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Mahasiswa tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Detail satu mahasiswa
+      tags:
+      - students
+    patch:
+      consumes:
+      - application/json
+      description: Hanya field yang dikirim yang diubah.
+      parameters:
+      - description: ID mahasiswa
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Field yang diubah
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.PatchStudentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Student'
+              type: object
+        "400":
+          description: Body bukan JSON yang valid atau tidak ada field yang diubah
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak berhak mengubah data mahasiswa lain
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Mahasiswa tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Validasi gagal
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mengubah sebagian data mahasiswa
+      tags:
+      - students
+    put:
+      consumes:
+      - application/json
+      description: Semua field wajib diisi; field yang tidak dikirim menjadi kosong.
+      parameters:
+      - description: ID mahasiswa
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Data mahasiswa baru
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ReplaceStudentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Student'
+              type: object
+        "400":
+          description: Body bukan JSON yang valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak berhak mengubah data mahasiswa lain
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Mahasiswa tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Validasi gagal
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mengganti data mahasiswa
+      tags:
+      - students
+  /students/{id}/portfolio:
+    get:
+      parameters:
+      - description: ID mahasiswa
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Portfolio'
+              type: object
+        "403":
+          description: Tidak berhak mengakses portofolio mahasiswa lain
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Portofolio tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Portofolio seorang mahasiswa
+      tags:
+      - portfolio
+    put:
+      consumes:
+      - application/json
+      description: Menyimpan seluruh isi portofolio; projects dan certificates digantikan
+        utuh oleh isi body.
+      parameters:
+      - description: ID mahasiswa
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Isi portofolio
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpsertPortfolioRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Portfolio'
+              type: object
+        "400":
+          description: Body bukan JSON yang valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak berhak mengubah portofolio mahasiswa lain
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Portofolio tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Validasi gagal
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Menyimpan portofolio
+      tags:
+      - portfolio
+  /students/{id}/portfolio/projects:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID mahasiswa
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Data proyek
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AddProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Portfolio'
+              type: object
+        "400":
+          description: Body bukan JSON yang valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak berhak mengubah portofolio mahasiswa lain
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Portofolio tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Validasi gagal
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Menambahkan proyek ke portofolio
+      tags:
+      - portfolio
+  /students/{id}/portfolio/projects/{projectId}:
+    delete:
+      parameters:
+      - description: ID mahasiswa
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID proyek
+        in: path
+        name: projectId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Portfolio'
+              type: object
+        "400":
+          description: ID proyek tidak valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak berhak mengubah portofolio mahasiswa lain
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Portofolio atau proyek tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Menghapus proyek dari portofolio
+      tags:
+      - portfolio
+  /users:
+    get:
+      description: Mendukung ?search=, ?is_active=, ?limit=, dan ?after=.
+      parameters:
+      - description: Cari username atau email
+        in: query
+        name: search
+        type: string
+      - description: Saring status aktif
+        in: query
+        name: is_active
+        type: boolean
+      - description: Jumlah data per halaman
+        in: query
+        name: limit
+        type: integer
+      - description: Cursor halaman sebelumnya
+        in: query
+        name: after
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.UserCursorPage'
+        "401":
+          description: Belum terautentikasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak memiliki hak user:list
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Daftar user dengan paginasi cursor
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      description: 'Soft delete: akun dinonaktifkan, bukan dihapus permanen.'
+      parameters:
+      - description: ID user
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: User dinonaktifkan
+        "401":
+          description: Belum terautentikasi
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak berhak menghapus user lain
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: User tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Menghapus user
+      tags:
+      - users
+    get:
+      parameters:
+      - description: ID user
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.User'
+              type: object
+        "400":
+          description: ID bukan angka positif
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak berhak mengakses data user lain
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: User tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Detail satu user
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: Hanya field yang dikirim yang diubah.
+      parameters:
+      - description: ID user
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Field yang diubah
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.PatchUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.User'
+              type: object
+        "400":
+          description: Body bukan JSON yang valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak berhak mengubah user lain
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Validasi gagal
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mengubah sebagian data user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Semua field wajib diisi; field yang tidak dikirim menjadi kosong.
+      parameters:
+      - description: ID user
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Data user baru
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ReplaceUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.User'
+              type: object
+        "400":
+          description: Body bukan JSON yang valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak berhak mengubah user lain
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Validasi gagal
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mengganti data user
+      tags:
+      - users
+  /users/{id}/role:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID user
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Role baru
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.User'
+              type: object
+        "400":
+          description: Body bukan JSON yang valid
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "403":
+          description: Tidak memiliki hak role:assign
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: User tidak ditemukan
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "422":
+          description: Role tidak dikenal
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mengganti role user
+      tags:
+      - users
 securityDefinitions:
   BearerAuth:
     description: 'Isi dengan: Bearer <access_token>'

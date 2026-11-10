@@ -161,6 +161,17 @@ func (s *AuthService) Refresh(c *fiber.Ctx) error {
 	return helper.Success(c, fiber.StatusOK, "token berhasil diperbarui", pair)
 }
 
+// Logout godoc
+//
+// @Summary      Keluar dan mencabut refresh token
+// @Description  Idempoten: mencabut refresh token yang tidak ada tetap dianggap berhasil.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        body  body      model.RefreshRequest  false  "Refresh token yang dicabut"
+// @Success      200   {object}  model.WebResponse
+// @Failure      400   {object}  model.ErrorResponse  "Body bukan JSON yang valid"
+// @Router       /auth/logout [post]
 func (s *AuthService) Logout(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -174,6 +185,16 @@ func (s *AuthService) Logout(c *fiber.Ctx) error {
 	return helper.Success(c, fiber.StatusOK, "logout berhasil", nil)
 }
 
+// Me godoc
+//
+// @Summary      Profil saya
+// @Description  Data akun dan daftar permission sesuai role.
+// @Tags         auth
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  model.WebResponse{data=model.MyProfile}
+// @Failure      401  {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Router       /auth/me [get]
 func (s *AuthService) Me(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -186,9 +207,9 @@ func (s *AuthService) Me(c *fiber.Ctx) error {
 		return helper.Unauthorized("user tidak ditemukan")
 	}
 	user.Password = ""
-	return helper.Success(c, fiber.StatusOK, "profil berhasil diambil", fiber.Map{
-		"user":        user,
-		"permissions": s.perms.PermissionsOf(authUser.Role),
+	return helper.Success(c, fiber.StatusOK, "profil berhasil diambil", model.MyProfile{
+		User:        user,
+		Permissions: s.perms.PermissionsOf(authUser.Role),
 	})
 }
 

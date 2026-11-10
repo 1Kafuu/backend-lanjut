@@ -43,3 +43,15 @@ type CursorMeta struct {
 	NextCursor string `json:"next_cursor,omitempty"`
 	HasMore    bool   `json:"has_more"`
 }
+
+type MyProfile struct {
+	User        User     `json:"user"`
+	Permissions []string `json:"permissions"`
+}
+
+type UserCursorPage struct {
+	Success bool       `json:"success"`
+	Message string     `json:"message"`
+	Data    []User     `json:"data"`
+	Meta    CursorMeta `json:"meta"`
+}

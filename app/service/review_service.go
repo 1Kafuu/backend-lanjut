@@ -171,6 +171,18 @@ func (s *ReviewService) ListByCourse(c *fiber.Ctx) error {
 	})
 }
 
+// Summary godoc
+//
+// @Summary      Ringkasan ulasan sebuah kelas
+// @Description  Jumlah ulasan, rata-rata rating, sebaran rating, dan tag terpopuler.
+// @Tags         reviews
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "ID kelas"
+// @Success      200  {object}  model.WebResponse{data=model.ReviewSummary}
+// @Failure      400  {object}  model.ErrorResponse  "ID bukan angka positif"
+// @Failure      404  {object}  model.ErrorResponse  "Kelas tidak ditemukan"
+// @Router       /courses/{id}/reviews/summary [get]
 func (s *ReviewService) Summary(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -195,6 +207,17 @@ func (s *ReviewService) Summary(c *fiber.Ctx) error {
 	)
 }
 
+// Get godoc
+//
+// @Summary      Detail satu ulasan
+// @Tags         reviews
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  string  true  "ID ulasan"
+// @Success      200  {object}  model.WebResponse{data=model.Review}
+// @Failure      400  {object}  model.ErrorResponse  "ID ulasan tidak valid"
+// @Failure      404  {object}  model.ErrorResponse  "Ulasan tidak ditemukan"
+// @Router       /reviews/{id} [get]
 func (s *ReviewService) Get(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -206,6 +229,23 @@ func (s *ReviewService) Get(c *fiber.Ctx) error {
 	return helper.Success(c, fiber.StatusOK, "ulasan ditemukan", review)
 }
 
+// Update godoc
+//
+// @Summary      Mengubah ulasan sendiri
+// @Description  Hanya pemilik ulasan yang boleh mengubah; minimal satu field harus diisi.
+// @Tags         reviews
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id    path  string                     true  "ID ulasan"
+// @Param        body  body  model.UpdateReviewRequest  true  "Field yang diubah"
+// @Success      200   {object}  model.WebResponse{data=model.Review}
+// @Failure      400   {object}  model.ErrorResponse  "Body bukan JSON yang valid atau tidak ada field yang diubah"
+// @Failure      401   {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Failure      403   {object}  model.ErrorResponse  "Bukan pemilik ulasan"
+// @Failure      404   {object}  model.ErrorResponse  "Ulasan tidak ditemukan"
+// @Failure      422   {object}  model.ErrorResponse  "Validasi gagal"
+// @Router       /reviews/{id} [patch]
 func (s *ReviewService) Update(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -241,6 +281,19 @@ func (s *ReviewService) Update(c *fiber.Ctx) error {
 	return helper.Success(c, fiber.StatusOK, "ulasan berhasil diubah", updated)
 }
 
+// Delete godoc
+//
+// @Summary      Menghapus ulasan
+// @Description  Pemilik boleh menghapus ulasan sendiri; admin dengan hak review:moderate boleh menghapus ulasan siapa pun.
+// @Tags         reviews
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  string  true  "ID ulasan"
+// @Success      204  "Ulasan dihapus"
+// @Failure      401  {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Failure      403  {object}  model.ErrorResponse  "Bukan pemilik ulasan dan tidak punya hak moderasi"
+// @Failure      404  {object}  model.ErrorResponse  "Ulasan tidak ditemukan"
+// @Router       /reviews/{id} [delete]
 func (s *ReviewService) Delete(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -257,6 +310,21 @@ func (s *ReviewService) Delete(c *fiber.Ctx) error {
 	return helper.NoContent(c)
 }
 
+// Reply godoc
+//
+// @Summary      Menambahkan balasan pada ulasan
+// @Tags         reviews
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id    path  string             true  "ID ulasan"
+// @Param        body  body  model.ReplyRequest  true  "Isi balasan"
+// @Success      201   {object}  model.WebResponse{data=model.Review}
+// @Failure      400   {object}  model.ErrorResponse  "Body bukan JSON yang valid"
+// @Failure      401   {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Failure      404   {object}  model.ErrorResponse  "Ulasan tidak ditemukan"
+// @Failure      422   {object}  model.ErrorResponse  "Validasi gagal"
+// @Router       /reviews/{id}/replies [post]
 func (s *ReviewService) Reply(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -286,6 +354,19 @@ func (s *ReviewService) Reply(c *fiber.Ctx) error {
 	return helper.Success(c, fiber.StatusCreated, "balasan berhasil ditambahkan", updated)
 }
 
+// MarkHelpful godoc
+//
+// @Summary      Menandai ulasan sebagai membantu
+// @Description  Satu orang hanya dapat menandai satu kali.
+// @Tags         reviews
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  string  true  "ID ulasan"
+// @Success      200  {object}  model.WebResponse{data=model.Review}
+// @Failure      401  {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Failure      404  {object}  model.ErrorResponse  "Ulasan tidak ditemukan"
+// @Failure      409  {object}  model.ErrorResponse  "ALREADY_VOTED"
+// @Router       /reviews/{id}/helpful [post]
 func (s *ReviewService) MarkHelpful(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()

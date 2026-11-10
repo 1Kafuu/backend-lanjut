@@ -360,6 +360,24 @@ func (s *CourseService) Swap(c *fiber.Ctx) error {
 	return helper.Success(c, fiber.StatusOK, "berhasil pindah kelas", joined)
 }
 
+// UpdateQuota godoc
+//
+// @Summary      Mengubah kuota kelas (admin)
+// @Description  Optimistic locking: kirim version yang terakhir dilihat. Membutuhkan permission course:manage.
+// @Tags         courses
+// @Accept       json
+// @Produce      json
+// @Param        id    path      int                       true  "ID kelas"
+// @Param        body  body      model.UpdateQuotaRequest  true  "Kuota baru dan version"
+// @Success      200   {object}  model.WebResponse{data=model.Course}
+// @Failure      400   {object}  model.ErrorResponse  "Body bukan JSON yang valid"
+// @Failure      403   {object}  model.ErrorResponse  "Tidak memiliki hak course:manage"
+// @Failure      404   {object}  model.ErrorResponse  "Kelas tidak ditemukan"
+// @Failure      409   {object}  model.ErrorResponse  "VERSION_CONFLICT atau QUOTA_BELOW_ENROLLED"
+// @Failure      422   {object}  model.ErrorResponse  "Validasi gagal"
+// @Security     BearerAuth
+// @Router       /courses/{id} [patch]
+//
 // UpdateQuota mengubah kuota kelas lalu memberi tahu seluruh peserta.
 //
 // Dua pernyataan sekarang: UPDATE courses dan INSERT outbox. Keduanya
