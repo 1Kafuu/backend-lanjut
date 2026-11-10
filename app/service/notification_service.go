@@ -33,6 +33,17 @@ func NewNotificationService(
 }
 
 // Mine menangani GET /notifications/mine.
+//
+// Mine godoc
+//
+// @Summary      Notifikasi saya
+// @Description  Daftar notifikasi yang sudah dikirim ke mahasiswa.
+// @Tags         notifications
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  model.WebResponse{data=[]model.Notification}
+// @Failure      401  {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Router       /notifications/mine [get]
 func (s *NotificationService) Mine(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -51,6 +62,18 @@ func (s *NotificationService) Mine(c *fiber.Ctx) error {
 
 // Monitor menangani GET /admin/queue. Dijaga middleware dengan permission
 // queue:monitor.
+//
+// Monitor godoc
+//
+// @Summary      Keadaan antrean notifikasi
+// @Description  Ringkasan outbox dan queue Asynq. Tetap berhasil walau Redis mati.
+// @Tags         admin
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  model.WebResponse{data=model.QueueStats}
+// @Failure      401  {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Failure      403  {object}  model.ErrorResponse  "Tidak memiliki hak queue:monitor"
+// @Router       /admin/queue [get]
 func (s *NotificationService) Monitor(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()

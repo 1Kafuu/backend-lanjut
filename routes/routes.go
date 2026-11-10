@@ -9,6 +9,7 @@ import (
 	"api-students/middleware"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/swagger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -27,10 +28,17 @@ type Dependencies struct {
 	PortfolioService *service.PortfolioService
 
 	NotificationService *service.NotificationService
+
+	EnableSwagger bool
 }
 
 func Register(app *fiber.App, deps Dependencies) {
 	api := app.Group("/api/v1")
+
+	if deps.EnableSwagger {
+		// Swagger UI: http://localhost:3000/swagger/index.html
+		app.Get("/swagger/*", swagger.HandlerDefault)
+	}
 
 	// public
 	api.Get("/health", healthCheck(deps.Pool, deps.Mongo))

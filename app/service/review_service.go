@@ -30,6 +30,22 @@ func NewReviewService(
 	}
 }
 
+// Create godoc
+//
+// @Summary      Membuat ulasan untuk sebuah kelas
+// @Tags         reviews
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id    path  int                    true   "ID kelas"
+// @Param        body  body  model.CreateReviewRequest  true  "Isi ulasan"
+// @Success      201   {object}  model.WebResponse{data=model.Review}
+// @Failure      400   {object}  model.ErrorResponse  "Body bukan JSON yang valid"
+// @Failure      401   {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Failure      403   {object}  model.ErrorResponse  "NOT_ENROLLED"
+// @Failure      409   {object}  model.ErrorResponse  "ALREADY_REVIEWED"
+// @Failure      422   {object}  model.ErrorResponse  "Validasi gagal"
+// @Router       /courses/{id}/reviews [post]
 func (s *ReviewService) Create(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -90,6 +106,21 @@ func (s *ReviewService) Create(c *fiber.Ctx) error {
 	)
 }
 
+// ListByCourse godoc
+//
+// @Summary      Daftar ulasan sebuah kelas
+// @Description  Mendukung paginasi berbasis cursor sebelum.
+// @Tags         reviews
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id     path   int    true   "ID kelas"
+// @Param        tag    query  string false  "Saring satu tag"
+// @Param        before query  string false  "Cursor halaman sebelumnya"
+// @Param        limit  query  int    false  "Jumlah data per halaman (1-50)"
+// @Success      200    {object}  model.ReviewPage
+// @Failure      400    {object}  model.ErrorResponse  "ID bukan angka positif"
+// @Failure      401    {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Router       /courses/{id}/reviews [get]
 func (s *ReviewService) ListByCourse(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -128,14 +159,14 @@ func (s *ReviewService) ListByCourse(c *fiber.Ctx) error {
 		nextBefore = reviews[len(reviews)-1].ID
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"success": true,
-		"message": "daftar ulasan berhasil diambil",
-		"data":    reviews,
-		"meta": fiber.Map{
-			"limit":       want,
-			"has_more":    hasMore,
-			"next_before": nextBefore,
+	return c.Status(fiber.StatusOK).JSON(model.ReviewPage{
+		Success: true,
+		Message: "daftar ulasan berhasil diambil",
+		Data:    reviews,
+		Meta: model.ReviewPageMeta{
+			Limit:      want,
+			HasMore:    hasMore,
+			NextBefore: nextBefore,
 		},
 	})
 }

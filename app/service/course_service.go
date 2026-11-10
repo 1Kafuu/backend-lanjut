@@ -28,6 +28,16 @@ func NewCourseService(
 }
 
 // List mengembalikan seluruh kelas.
+//
+// List godoc
+//
+// @Summary      Daftar seluruh kelas
+// @Tags         courses
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  model.WebResponse{data=[]model.Course}
+// @Failure      401  {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Router       /courses [get]
 func (s *CourseService) List(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -40,6 +50,17 @@ func (s *CourseService) List(c *fiber.Ctx) error {
 }
 
 // Mine mengembalikan KRS mahasiswa yang sedang login beserta total SKS.
+//
+// Mine godoc
+//
+// @Summary      KRS saya
+// @Description  Daftar kelas yang diikuti mahasiswa beserta total SKS.
+// @Tags         courses
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  model.WebResponse{data=model.MyCourses}
+// @Failure      401  {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Router       /courses/mine [get]
 func (s *CourseService) Mine(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -58,14 +79,26 @@ func (s *CourseService) Mine(c *fiber.Ctx) error {
 	for _, course := range courses {
 		total += course.Credits
 	}
-	return helper.Success(c, fiber.StatusOK, "KRS berhasil diambil", fiber.Map{
-		"courses":       courses,
-		"total_credits": total,
-		"max_credits":   MaxCreditsPerSemester,
+	return helper.Success(c, fiber.StatusOK, "KRS berhasil diambil", model.MyCourses{
+		Courses:      courses,
+		TotalCredits: total,
+		MaxCredits:   MaxCreditsPerSemester,
 	})
 }
 
 // Get mengembalikan satu kelas berdasarkan id.
+//
+// Get godoc
+//
+// @Summary      Detail satu kelas
+// @Tags         courses
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "ID kelas"
+// @Success      200  {object}  model.WebResponse{data=model.Course}
+// @Failure      400  {object}  model.ErrorResponse  "ID bukan angka positif"
+// @Failure      404  {object}  model.ErrorResponse  "Kelas tidak ditemukan"
+// @Router       /courses/{id} [get]
 func (s *CourseService) Get(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -90,6 +123,21 @@ var errCreditLimit = errors.New("batas SKS terlampaui")
 // secara atomik, lalu catat pendaftaran. Semua lewat repo yang terikat
 // pada transaction supaya kegagalan di langkah mana pun membatalkan
 // seluruhnya.
+//
+// Enroll godoc
+//
+// @Summary      Mendaftar ke sebuah kelas
+// @Description  Menambah satu kursi dan menulis satu event enrollment.created ke outbox bila seluruh langkah berhasil.
+// @Tags         courses
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "ID kelas"
+// @Success      201  {object}  model.WebResponse{data=model.Course}
+// @Failure      400  {object}  model.ErrorResponse  "Body bukan JSON yang valid"
+// @Failure      401  {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Failure      404  {object}  model.ErrorResponse  "Kelas tidak ditemukan"
+// @Failure      409  {object}  model.ErrorResponse  "COURSE_FULL atau sudah terdaftar"
+// @Router       /courses/{id}/enroll [post]
 func (s *CourseService) Enroll(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -157,6 +205,19 @@ func (s *CourseService) Enroll(c *fiber.Ctx) error {
 }
 
 // Drop membatalkan pendaftaran mahasiswa pada satu kelas.
+//
+// Drop godoc
+//
+// @Summary      Keluar dari sebuah kelas
+// @Description  Mengurangi satu kursi dan menulis satu event enrollment.dropped ke outbox.
+// @Tags         courses
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id  path  int  true  "ID kelas"
+// @Success      204  "Kursi dilepas"
+// @Failure      401  {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Failure      404  {object}  model.ErrorResponse  "Tidak terdaftar pada kelas ini"
+// @Router       /courses/{id}/enroll [delete]
 func (s *CourseService) Drop(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
@@ -202,6 +263,21 @@ func (s *CourseService) Drop(c *fiber.Ctx) error {
 // LockStudent diambil lebih dulu, baru LockCourses yang selalu mengunci
 // dalam urutan id menaik, sehingga dua mahasiswa yang bertukar arah tidak
 // saling menunggu.
+//
+// Swap godoc
+//
+// @Summary      Pindah kelas
+// @Description  Keluar dari satu kelas dan masuk ke kelas lain sebagai satu tindakan. Bila kelas tujuan penuh, tidak ada yang berubah.
+// @Tags         courses
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      model.SwapRequest  true  "Kelas asal dan kelas tujuan"
+// @Success      200   {object}  model.WebResponse{data=model.Course}
+// @Failure      400   {object}  model.ErrorResponse  "Body bukan JSON yang valid"
+// @Failure      401   {object}  model.ErrorResponse  "Belum terautentikasi"
+// @Failure      409   {object}  model.ErrorResponse  "COURSE_FULL pada kelas tujuan"
+// @Router       /enrollments/swap [post]
 func (s *CourseService) Swap(c *fiber.Ctx) error {
 	ctx, cancel := helper.RequestContext(c)
 	defer cancel()
